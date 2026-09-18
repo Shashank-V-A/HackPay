@@ -61,29 +61,24 @@ export function cognitoSignUp(input: {
   role: AppRole
 }): Promise<{ userConfirmed: boolean; userSub?: string }> {
   const pool = getUserPool()
+  const email = input.email.trim().toLowerCase()
+  // Pool uses email as username — do not send a conflicting email attribute.
   const attributeList = [
-    new CognitoUserAttribute({ Name: 'email', Value: input.email.trim().toLowerCase() }),
-    new CognitoUserAttribute({ Name: 'name', Value: input.name.trim() }),
+    new CognitoUserAttribute({ Name: 'name', Value: input.name.trim() || email.split('@')[0] }),
     new CognitoUserAttribute({ Name: 'custom:role', Value: input.role }),
   ]
 
   return new Promise((resolve, reject) => {
-    pool.signUp(
-      input.email.trim().toLowerCase(),
-      input.password,
-      attributeList,
-      [],
-      (err, result) => {
-        if (err) {
-          reject(err)
-          return
-        }
-        resolve({
-          userConfirmed: Boolean(result?.userConfirmed),
-          userSub: result?.userSub,
-        })
-      },
-    )
+    pool.signUp(email, input.password, attributeList, [], (err, result) => {
+      if (err) {
+        reject(normalizeCognitoError(err))
+        return
+      }
+      resolve({
+        userConfirmed: Boolean(result?.userConfirmed),
+        userSub: result?.userSub,
+      })
+    })
   })
 }
 
@@ -105,29 +100,58 @@ export function cognitoSignIn(input: {
   password: string
   role: AppRole
 }): Promise<CognitoAuthResult> {
+  const email = input.email.trim().toLowerCase()
   const user = new CognitoUser({
-    Username: input.email.trim().toLowerCase(),
+    Username: email,
     Pool: getUserPool(),
   })
   const authDetails = new AuthenticationDetails({
-    Username: input.email.trim().toLowerCase(),
+    Username: email,
     Password: input.password,
   })
 
   return new Promise((resolve, reject) => {
     user.authenticateUser(authDetails, {
       onSuccess: (session) => {
-        // Persist role attribute if missing on older users
         const attrs = [
           new CognitoUserAttribute({ Name: 'custom:role', Value: input.role }),
         ]
         user.updateAttributes(attrs, () => {
+          // Ignore attribute update failures — session is enough to enter the app.
           resolve(sessionToResult(session, input.role))
         })
       },
-      onFailure: (err) => reject(err),
+      onFailure: (err) => reject(normalizeCognitoError(err)),
     })
   })
+}
+
+function normalizeCognitoError(err: unknown): Error {
+  const raw = err as { code?: string; name?: string; message?: string }
+  const code = raw?.code || raw?.name || ''
+  const message = raw?.message || 'Cognito request failed'
+
+  if (code === 'UsernameExistsException') {
+    return new Error('An account with this email already exists. Switch to Sign in.')
+  }
+  if (code === 'InvalidPasswordException') {
+    return new Error(
+      'Password must be at least 8 characters and include a lowercase letter and a number (e.g. hackpay1).',
+    )
+  }
+  if (code === 'UserNotConfirmedException') {
+    return new Error('Account is not confirmed yet. Try again in a moment or use Sign in.')
+  }
+  if (code === 'NotAuthorizedException') {
+    return new Error('Incorrect email or password.')
+  }
+  if (code === 'InvalidParameterException') {
+    return new Error(message)
+  }
+  if (code === 'UserNotFoundException') {
+    return new Error('No account for this email. Switch to Create account.')
+  }
+  return new Error(message)
 }
 
 export function cognitoSignOut(email?: string): void {

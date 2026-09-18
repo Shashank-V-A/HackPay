@@ -90,6 +90,13 @@ exports.handler = async (event) => {
       accessTokenValidity: cdk.Duration.hours(1),
       idTokenValidity: cdk.Duration.hours(1),
       refreshTokenValidity: cdk.Duration.days(30),
+      // Required so browser SignUp can set custom:role
+      readAttributes: new cognito.ClientAttributes()
+        .withStandardAttributes({ email: true, fullname: true, emailVerified: true })
+        .withCustomAttributes('role'),
+      writeAttributes: new cognito.ClientAttributes()
+        .withStandardAttributes({ email: true, fullname: true })
+        .withCustomAttributes('role'),
     })
 
     // ── Network + RDS ────────────────────────────────────────

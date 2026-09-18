@@ -23,8 +23,13 @@ export default function ProfileForm({ onSubmit, role }: ProfileFormProps) {
 
   const nameError = authMode === 'signup' && !name.trim() ? 'Enter your name.' : ''
   const emailError = !isValidEmail(email) ? 'Enter a valid email.' : ''
-  const passwordError =
-    cognito && password.length < 8 ? 'Password must be at least 8 characters.' : ''
+  const passwordError = !cognito
+    ? ''
+    : password.length < 8
+      ? 'Password must be at least 8 characters.'
+      : !/[a-z]/.test(password) || !/[0-9]/.test(password)
+        ? 'Include a lowercase letter and a number (e.g. hackpay1).'
+        : ''
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -148,7 +153,7 @@ export default function ProfileForm({ onSubmit, role }: ProfileFormProps) {
               className="pv-input"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="At least 8 characters"
+              placeholder="e.g. hackpay1 (letter + number)"
               autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'}
               maxLength={128}
               aria-invalid={submitted && passwordError ? 'true' : undefined}
@@ -159,7 +164,11 @@ export default function ProfileForm({ onSubmit, role }: ProfileFormProps) {
               <Icon name="alert" size={12} />
               {passwordError}
             </span>
-          ) : null}
+          ) : (
+            <p className="pv-dim" style={{ marginTop: 6, fontSize: 12 }}>
+              Cognito needs 8+ chars with a lowercase letter and a number.
+            </p>
+          )}
         </div>
       ) : null}
 
