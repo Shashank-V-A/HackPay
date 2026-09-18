@@ -6,6 +6,21 @@ applications:
         preBuild:
           commands:
             - npm ci
+            # Amplify SSR often omits non-NEXT_PUBLIC vars at runtime; bake them for Next server.
+            - |
+              set -e
+              : "${DATABASE_URL:?DATABASE_URL must be set in Amplify env vars}"
+              {
+                echo "DATABASE_URL=${DATABASE_URL}"
+                echo "SNS_TOPIC_ARN=${SNS_TOPIC_ARN}"
+                echo "AGENT_CRON_SECRET=${AGENT_CRON_SECRET}"
+                echo "NEXT_PUBLIC_AWS_REGION=${NEXT_PUBLIC_AWS_REGION}"
+                echo "NEXT_PUBLIC_COGNITO_USER_POOL_ID=${NEXT_PUBLIC_COGNITO_USER_POOL_ID}"
+                echo "NEXT_PUBLIC_COGNITO_CLIENT_ID=${NEXT_PUBLIC_COGNITO_CLIENT_ID}"
+                echo "NEXT_PUBLIC_S3_BUCKET=${NEXT_PUBLIC_S3_BUCKET}"
+                echo "NEXT_PUBLIC_CLOUDFRONT_URL=${NEXT_PUBLIC_CLOUDFRONT_URL}"
+                echo "NEXT_PUBLIC_SNS_TOPIC_ARN=${NEXT_PUBLIC_SNS_TOPIC_ARN:-$SNS_TOPIC_ARN}"
+              } > .env.production
         build:
           commands:
             - npm run build
