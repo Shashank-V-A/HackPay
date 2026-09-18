@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "npm run --prefix frontend dev",
     "dev:web": "npm run --prefix frontend dev",
-    "build": "tsc --noEmit",
+    "build": "npm run --prefix frontend build",
     "build:web": "npm run --prefix frontend build",
+    "typecheck": "tsc --noEmit",
     "migrate:rds": "node scripts/migrate-rds.mjs",
     "infra:install": "npm install --prefix infra",
     "infra:deploy": "npm run --prefix infra deploy",
