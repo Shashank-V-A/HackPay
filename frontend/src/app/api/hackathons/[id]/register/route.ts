@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
-import { isSupabaseConfigured } from '@/lib/supabase/env'
+import { isDatabaseConfigured } from '@/lib/aws/dbReady'
 import { registerWalletForHackathon } from '@/lib/supabase/registerParticipant'
 
 export const runtime = 'nodejs'
@@ -11,9 +11,9 @@ type RouteContext = { params: Promise<{ id: string }> }
 export async function POST(request: Request, context: RouteContext) {
   const { id } = await context.params
 
-  if (!isSupabaseConfigured()) {
+  if (!isDatabaseConfigured()) {
     return NextResponse.json(
-      { success: false, error: 'Supabase is not configured' },
+      { success: false, error: 'Database is not configured (DATABASE_URL or Supabase)' },
       { status: 503 },
     )
   }

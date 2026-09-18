@@ -12,6 +12,7 @@ import {
   dropLegacyStellarHackathons,
   dropLegacyStellarProposals,
 } from '../utils/legacyWeb3Data'
+import { authHeaders } from '../utils/authSession'
 
 type HackathonExtras = Hackathon & {
   sponsorFundingXlm?: number
@@ -55,7 +56,10 @@ export async function fetchHackathons(filters?: {
       if (filters?.organizer) params.set('organizer', filters.organizer)
       if (filters?.sponsor) params.set('sponsor', filters.sponsor)
       const qs = params.toString()
-      const res = await fetch(`/api/hackathons${qs ? `?${qs}` : ''}`, { cache: 'no-store' })
+      const res = await fetch(`/api/hackathons${qs ? `?${qs}` : ''}`, {
+        cache: 'no-store',
+        headers: authHeaders(),
+      })
       const data = await parseJson<{
         hackathons?: HackathonExtras[]
         source?: string
@@ -64,7 +68,10 @@ export async function fetchHackathons(filters?: {
       if (!res.ok) {
         throw new Error(data.error || `Failed to load hackathons (${res.status})`)
       }
-      if (data.source === 'supabase' && Array.isArray(data.hackathons)) {
+      if (
+        (data.source === 'supabase' || data.source === 'rds') &&
+        Array.isArray(data.hackathons)
+      ) {
         const normalized = normalizeHackathons(data.hackathons)
         cacheHackathonsLocally(normalized)
         return normalized
@@ -87,7 +94,7 @@ export async function createHackathon(
   try {
     const res = await fetch('/api/hackathons', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(hackathon),
     })
     const data = await parseJson<{
@@ -120,7 +127,7 @@ export async function updateHackathon(
   try {
     const res = await fetch(`/api/hackathons/${encodeURIComponent(id)}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(patch),
     })
     const data = await parseJson<{

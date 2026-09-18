@@ -6,6 +6,9 @@ dist/
 web/.next/
 *.log
 keys.txt
+infra/cdk.out/
+infra/dist/
+infra/node_modules/
 
 # Rust / Soroban
 target/

@@ -9,6 +9,12 @@ loadEnv({ path: path.resolve(repoRoot, '.env') })
 loadEnv({ path: path.resolve(root, '.env') })
 loadEnv({ path: path.resolve(root, '.env.local') })
 
+const hasRds = Boolean(process.env.DATABASE_URL?.trim())
+if (hasRds) {
+  console.log('[db-env] OK DATABASE_URL set (AWS RDS)')
+  process.exit(0)
+}
+
 const DEFAULT_URL = 'https://mjlbcskcsrxkjycjpdyh.supabase.co'
 const DEFAULT_KEY = 'sb_publishable_jM9a3lNktIjheG6joFKvYw_G8PcKjPx'
 
@@ -32,8 +38,8 @@ const fromEnv =
   )
 
 if (!url || !key) {
-  console.error('[supabase-env] Missing URL or publishable key after resolution.')
+  console.error('[db-env] Missing DATABASE_URL (RDS) or Supabase URL/key.')
   process.exit(1)
 }
 
-console.log(`[supabase-env] OK url=${url} source=${fromEnv ? 'env' : 'project-default'}`)
+console.log(`[db-env] OK supabase url=${url} source=${fromEnv ? 'env' : 'project-default'}`)

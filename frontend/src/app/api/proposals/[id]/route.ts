@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
-import { isSupabaseConfigured } from '@/lib/supabase/env'
+import { isDatabaseConfigured } from '@/lib/aws/dbReady'
 import { proposalToRow, rowToProposal } from '@/lib/supabase/mappers'
 import { syncExecutedPayouts } from '@/lib/supabase/syncExecutedPayouts'
 import { isUuid } from '@/lib/supabase/ids'
@@ -22,7 +22,7 @@ async function findProposal(supabase: ReturnType<typeof createSupabaseServerClie
 
 export async function PATCH(request: Request, context: RouteContext) {
   const { id } = await context.params
-  if (!isSupabaseConfigured()) {
+  if (!isDatabaseConfigured()) {
     return NextResponse.json({ success: false, error: 'Supabase not configured' }, { status: 503 })
   }
 

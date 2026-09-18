@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
-import { isSupabaseConfigured } from '@/lib/supabase/env'
+import { databaseSourceLabel, isDatabaseConfigured } from '@/lib/aws/dbReady'
 import {
   ensureEscrowForHackathon,
   ensureOrganizer,
@@ -14,7 +14,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
-  if (!isSupabaseConfigured()) {
+  if (!isDatabaseConfigured()) {
     return NextResponse.json({ hackathons: [], source: 'none' })
   }
 
@@ -35,9 +35,9 @@ export async function GET(request: Request) {
     }
 
     const hackathons = dropLegacyStellarHackathons(
-      (data || []).map((row) => rowToHackathon(row)),
+      (data || []).map((row: Parameters<typeof rowToHackathon>[0]) => rowToHackathon(row)),
     )
-    return NextResponse.json({ hackathons, source: 'supabase' })
+    return NextResponse.json({ hackathons, source: databaseSourceLabel() })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to load hackathons'
     return NextResponse.json({ error: message, hackathons: [] }, { status: 500 })
@@ -45,9 +45,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (!isSupabaseConfigured()) {
+  if (!isDatabaseConfigured()) {
     return NextResponse.json(
-      { success: false, error: 'Supabase is not configured' },
+      { success: false, error: 'Database is not configured (DATABASE_URL or Supabase)' },
       { status: 503 },
     )
   }
@@ -77,14 +77,14 @@ export async function POST(request: Request) {
 
     await ensureEscrowForHackathon(
       supabase,
-      data.id,
+      (data as { id: string }).id,
       body.organizerAddress,
       body.escrowAddress,
     )
 
     return NextResponse.json({
       success: true,
-      hackathon: rowToHackathon(data),
+      hackathon: rowToHackathon(data as Parameters<typeof rowToHackathon>[0]),
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to create hackathon'

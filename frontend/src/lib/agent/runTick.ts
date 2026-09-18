@@ -10,6 +10,9 @@ import { fundingGapXlm, canExecuteRelease, getPayoutWorkflowStage } from '@/clie
 import { handleExecute } from '@/lib/backend/escrowHandlers'
 import { appendAgentLog, summarizeAgentLog } from '@/lib/agent/summarize'
 import { isSupabaseConfigured } from '@/lib/supabase/env'
+import { getActiveDataBackend, isRdsConfigured } from '@/lib/aws/env'
+import { buildReceiptKey, uploadAuditObject } from '@/lib/aws/s3'
+import { publishAlert } from '@/lib/aws/sns'
 import { rowToHackathon, rowToProposal } from '@/lib/supabase/mappers'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { syncExecutedPayouts } from '@/lib/supabase/syncExecutedPayouts'
@@ -25,10 +28,21 @@ export type AgentTickAction = {
 export type AgentTickResult = {
   ok: boolean
   ranAt: string
-  source: 'supabase' | 'none'
+  source: 'rds' | 'supabase' | 'none'
   actions: AgentTickAction[]
   summary: string
   error?: string
+}
+
+function isDataReady(): boolean {
+  return isRdsConfigured() || isSupabaseConfigured()
+}
+
+function dataSource(): AgentTickResult['source'] {
+  const backend = getActiveDataBackend()
+  if (backend === 'rds') return 'rds'
+  if (backend === 'supabase') return 'supabase'
+  return 'none'
 }
 
 function nowIso() {
@@ -77,34 +91,37 @@ async function saveAgentPayload(
 
 export async function runAgentTick(): Promise<AgentTickResult> {
   const ranAt = nowIso()
-  if (!isSupabaseConfigured()) {
+  if (!isDataReady()) {
     return {
       ok: true,
       ranAt,
       source: 'none',
       actions: [],
       summary: summarizeAgentLog([]),
-      error: 'Supabase is not configured',
+      error: 'Database is not configured (DATABASE_URL or Supabase)',
     }
   }
 
   const supabase = createSupabaseServerClient()
   const actions: AgentTickAction[] = []
+  const source = dataSource()
 
   const { data: hackRows, error: hackError } = await supabase
     .from('hackathons')
     .select('*')
     .order('created_at', { ascending: false })
   if (hackError) {
-    return { ok: false, ranAt, source: 'supabase', actions, summary: summarizeAgentLog([]), error: hackError.message }
+    return { ok: false, ranAt, source, actions, summary: summarizeAgentLog([]), error: hackError.message }
   }
 
   const { data: proposalRows, error: proposalError } = await supabase.from('proposals').select('*')
   if (proposalError) {
-    return { ok: false, ranAt, source: 'supabase', actions, summary: summarizeAgentLog([]), error: proposalError.message }
+    return { ok: false, ranAt, source, actions, summary: summarizeAgentLog([]), error: proposalError.message }
   }
 
-  const proposals = (proposalRows || []).map((row) => rowToProposal(row))
+  const proposals = (proposalRows || []).map((row: Parameters<typeof rowToProposal>[0]) =>
+    rowToProposal(row),
+  )
 
   for (const row of hackRows || []) {
     const hackathon = rowToHackathon(row)
@@ -321,6 +338,31 @@ export async function runAgentTick(): Promise<AgentTickResult> {
           payoutExecuted: true,
           payoutTxHash: executed.txHash,
         })
+
+        await uploadAuditObject({
+          key: buildReceiptKey(hackathon.id, 'execute', executed.txHash || String(Date.now())),
+          body: JSON.stringify(
+            {
+              hackathonId: hackathon.id,
+              receipt: executed.txHash,
+              compliance: executed.compliance,
+              gates: executed.gates,
+              at: executedAt,
+            },
+            null,
+            2,
+          ),
+        })
+
+        await publishAlert({
+          subject: `HackPay payout: ${hackathon.name}`,
+          message: `${moneyCopy}\nReceipt: ${executed.txHash}`,
+          attributes: {
+            stage: 'released',
+            hackathonId: hackathon.id,
+          },
+        })
+
         dirty = false
       }
     }
@@ -329,21 +371,30 @@ export async function runAgentTick(): Promise<AgentTickResult> {
       agent.lastTickAt = ranAt
       agent.summary = summarizeAgentLog(actions.filter((a) => a.hackathonId === hackathon.id))
       await saveAgentPayload(supabase, row.id, payload, agent)
+
+      const last = actions[actions.length - 1]
+      if (last && last.stage !== 'released') {
+        await publishAlert({
+          subject: `HackPay agent: ${last.stage} — ${hackathon.name}`,
+          message: last.detail,
+          attributes: { stage: last.stage, hackathonId: hackathon.id },
+        })
+      }
     }
   }
 
-  return { ok: true, ranAt, source: 'supabase', actions, summary: summarizeAgentLog(actions) }
+  return { ok: true, ranAt, source, actions, summary: summarizeAgentLog(actions) }
 }
 
 export async function listAgentNotifications(wallet: string): Promise<AgentNotification[]> {
-  if (!wallet.trim() || !isSupabaseConfigured()) return []
+  if (!wallet.trim() || !isDataReady()) return []
   const supabase = createSupabaseServerClient()
   const { data, error } = await supabase.from('hackathons').select('payload, legacy_id, id')
   if (error || !data) return []
 
   const needle = wallet.trim().toLowerCase()
   const notices: AgentNotification[] = []
-  for (const row of data) {
+  for (const row of data as Array<{ payload?: Record<string, unknown> }>) {
     const payload = (row.payload || {}) as Record<string, unknown>
     const agent = payload.agent as HackathonAgentState | undefined
     for (const item of agent?.inbox || []) {
@@ -354,13 +405,13 @@ export async function listAgentNotifications(wallet: string): Promise<AgentNotif
 }
 
 export async function markAgentNotificationRead(wallet: string, noticeId: string): Promise<boolean> {
-  if (!wallet.trim() || !noticeId || !isSupabaseConfigured()) return false
+  if (!wallet.trim() || !noticeId || !isDataReady()) return false
   const supabase = createSupabaseServerClient()
   const { data, error } = await supabase.from('hackathons').select('id, payload')
   if (error || !data) return false
 
   const needle = wallet.trim().toLowerCase()
-  for (const row of data) {
+  for (const row of data as Array<{ id: string; payload?: Record<string, unknown> }>) {
     const payload = (row.payload || {}) as Record<string, unknown>
     const agent = payload.agent as HackathonAgentState | undefined
     if (!agent?.inbox?.length) continue

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
-import { isSupabaseConfigured } from '@/lib/supabase/env'
+import { isDatabaseConfigured } from '@/lib/aws/dbReady'
 import { hackathonToRow, rowToHackathon } from '@/lib/supabase/mappers'
 import { syncHackathonParticipantRoster } from '@/lib/supabase/syncParticipantRoster'
 import { findHackathonById } from '@/lib/supabase/registerParticipant'
@@ -18,7 +18,7 @@ async function findHackathon(supabase: ReturnType<typeof createSupabaseServerCli
 
 export async function GET(_request: Request, context: RouteContext) {
   const { id } = await context.params
-  if (!isSupabaseConfigured()) {
+  if (!isDatabaseConfigured()) {
     return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 })
   }
 
@@ -32,7 +32,7 @@ export async function GET(_request: Request, context: RouteContext) {
 
 export async function PATCH(request: Request, context: RouteContext) {
   const { id } = await context.params
-  if (!isSupabaseConfigured()) {
+  if (!isDatabaseConfigured()) {
     return NextResponse.json({ success: false, error: 'Supabase not configured' }, { status: 503 })
   }
 
@@ -82,7 +82,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
 export async function DELETE(request: Request, context: RouteContext) {
   const { id } = await context.params
-  if (!isSupabaseConfigured()) {
+  if (!isDatabaseConfigured()) {
     return NextResponse.json({ success: false, error: 'Supabase not configured' }, { status: 503 })
   }
 

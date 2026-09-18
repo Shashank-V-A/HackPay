@@ -11,6 +11,10 @@ export interface UserProfile {
   usn?: string
   upi?: string
   role: UserRole
+  /** Cognito password when AWS auth is enabled */
+  password?: string
+  /** Sign in existing Cognito user vs register */
+  authMode?: 'signup' | 'signin'
 }
 
 export interface HolderState {

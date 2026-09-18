@@ -1,19 +1,25 @@
 {
   "name": "hackpay",
   "version": "1.0.0",
-  "description": "HackPay — agentic dual-control hackathon prize escrow in INR via Razorpay",
+  "description": "HackPay — agentic dual-control hackathon prize escrow in INR via Razorpay + AWS",
   "type": "module",
   "scripts": {
     "dev": "npm run --prefix frontend dev",
     "dev:web": "npm run --prefix frontend dev",
     "build": "tsc --noEmit",
-    "build:web": "npm run --prefix frontend build"
+    "build:web": "npm run --prefix frontend build",
+    "migrate:rds": "node scripts/migrate-rds.mjs",
+    "infra:install": "npm install --prefix infra",
+    "infra:deploy": "npm run --prefix infra deploy",
+    "infra:synth": "npm run --prefix infra synth"
   },
   "dependencies": {
-    "dotenv": "^17.4.2"
+    "dotenv": "^17.4.2",
+    "pg": "^8.23.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/pg": "^8.23.1",
     "tsx": "^4.19.0",
     "typescript": "^5.0.0"
   }

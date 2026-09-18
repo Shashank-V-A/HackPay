@@ -75,7 +75,7 @@ export type HackathonAgentState = {
 export type AgentTickResult = {
   ok: boolean
   ranAt: string
-  source: 'supabase' | 'none'
+  source: 'rds' | 'supabase' | 'none'
   actions: Array<{
     stage: string
     hackathonId: string

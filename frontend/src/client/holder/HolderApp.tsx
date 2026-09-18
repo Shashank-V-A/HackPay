@@ -14,6 +14,12 @@ import { resolveSessionWithQrBootstrap } from '../utils/qrSession'
 import { disconnectWallet } from '../wallet'
 import { syncWalletSession } from '../services/sessionApi'
 import WalletGate from './components/WalletGate'
+import {
+  cognitoSignIn,
+  cognitoSignOut,
+  cognitoSignUp,
+  isBrowserCognitoEnabled,
+} from '@/lib/aws/cognitoClient'
 
 const ConnectedHolderView = lazy(() => import('./ConnectedHolderView'))
 
@@ -40,12 +46,12 @@ export default function HolderApp() {
   const [userWallet, setUserWallet] = useState<string | null>(null)
   const [userRole, setUserRole] = useState<UserRole>(null)
   const [activeView, setActiveView] = useState<HolderView>('list')
-  /** Hackathon id carried by navigation, e.g. "View details" on an event card. */
   const [activeEventId, setActiveEventId] = useState<string | null>(null)
   const [loginStep, setLoginStep] = useState<'profile' | 'connect'>('profile')
   const [pendingProfile, setPendingProfile] = useState<UserProfile | null>(null)
   const [connectError, setConnectError] = useState('')
   const [gateRole, setGateRole] = useState<AppRole>('participant')
+  const [authBusy, setAuthBusy] = useState(false)
 
   useEffect(() => {
     const session = resolveSessionWithQrBootstrap() || getActiveSession()
@@ -75,8 +81,6 @@ export default function HolderApp() {
     }
   }, [])
 
-  // Deep link from the landing page event grid: /holder?event=<id>
-  // Optional /holder?role=organizer|sponsor|participant pre-selects the gate tab.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const role = parseRoleParam(params.get('role'))
@@ -88,7 +92,11 @@ export default function HolderApp() {
     window.history.replaceState({}, '', window.location.pathname + window.location.hash)
   }, [])
 
-  const handleWalletConnect = (address: string, profileOverride?: UserProfile | null) => {
+  const handleWalletConnect = (
+    address: string,
+    profileOverride?: UserProfile | null,
+    cognitoExtras?: { idToken: string; sub?: string },
+  ) => {
     setUserWallet(address)
     setWalletConnected(true)
     let role: UserRole
@@ -112,7 +120,11 @@ export default function HolderApp() {
       }
     }
     if (role) {
-      setActiveSession(address, role)
+      setActiveSession(address, role, {
+        authProvider: cognitoExtras ? 'cognito' : 'local',
+        idToken: cognitoExtras?.idToken,
+        sub: cognitoExtras?.sub,
+      })
       void syncWalletSession({ wallet: address, role, name: profileName })
     }
     if (role === 'sponsor') {
@@ -124,7 +136,45 @@ export default function HolderApp() {
     }
   }
 
-  // Route users to their role-specific consoles.
+  const handleCognitoProfile = async (profile: UserProfile) => {
+    setAuthBusy(true)
+    setConnectError('')
+    setPendingProfile(profile)
+    setGateRole(profile.role as AppRole)
+    try {
+      const password = profile.password || ''
+      const email = profile.email.trim().toLowerCase()
+      const role = profile.role as AppRole
+
+      if (profile.authMode === 'signin') {
+        const result = await cognitoSignIn({ email, password, role })
+        handleWalletConnect(
+          result.email,
+          { ...profile, name: result.name || profile.name },
+          { idToken: result.idToken },
+        )
+        return
+      }
+
+      await cognitoSignUp({
+        email,
+        password,
+        name: profile.name,
+        role,
+      })
+      const result = await cognitoSignIn({ email, password, role })
+      handleWalletConnect(result.email, profile, { idToken: result.idToken })
+    } catch (err) {
+      const message =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message: string }).message)
+          : 'Cognito sign-in failed'
+      setConnectError(message)
+    } finally {
+      setAuthBusy(false)
+    }
+  }
+
   useEffect(() => {
     if (!walletConnected || !userRole) return
     if (userRole === 'sponsor') {
@@ -136,16 +186,6 @@ export default function HolderApp() {
     }
   }, [walletConnected, userRole])
 
-  const handleWalletError = (error: string) => {
-    // eslint-disable-next-line no-console
-    console.error('Account sign-in error:', error)
-    setConnectError(error)
-  }
-
-  /**
-   * Honour the hackathon id every caller already passes. The original dropped
-   * `params` entirely, so "View details" / "View status" only swapped tabs.
-   */
   const handleNavigate = (view: string, params?: { hackathonId?: string } | unknown) => {
     const hackathonId =
       params && typeof params === 'object' && 'hackathonId' in params
@@ -163,6 +203,7 @@ export default function HolderApp() {
 
   const handleDisconnect = () => {
     void disconnectWallet()
+    if (userWallet) cognitoSignOut(userWallet)
     clearActiveSession()
     requireManualConnect()
     setWalletConnected(false)
@@ -186,8 +227,12 @@ export default function HolderApp() {
         role={gateRole}
         onRoleChange={handleGateRoleChange}
         loginStep={loginStep}
-        connectError={connectError}
+        connectError={connectError || (authBusy ? 'Signing in with Amazon Cognito…' : '')}
         onProfileSubmit={(profile) => {
+          if (isBrowserCognitoEnabled()) {
+            void handleCognitoProfile(profile)
+            return
+          }
           setPendingProfile(profile)
           setGateRole(profile.role as AppRole)
           setConnectError('')
@@ -228,7 +273,9 @@ export default function HolderApp() {
       <footer className="pv-footer">
         <div className="pv-footer__inner">
           <span>HackPay · hackathon prize escrow powered by Razorpay INR dual-control.</span>
-          <span className="pv-dim">2-of-2 approvals · Agentic gates · Receipt audit trail</span>
+          <span className="pv-dim">
+            2-of-2 approvals · Agentic gates · AWS Cognito · Receipt audit trail
+          </span>
         </div>
       </footer>
     </div>

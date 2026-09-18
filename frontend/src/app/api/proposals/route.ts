@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
-import { isSupabaseConfigured } from '@/lib/supabase/env'
+import { isDatabaseConfigured } from '@/lib/aws/dbReady'
 import { proposalToRow, rowToProposal } from '@/lib/supabase/mappers'
 import { syncExecutedPayouts } from '@/lib/supabase/syncExecutedPayouts'
 import { coerceUuid } from '@/lib/supabase/ids'
@@ -83,7 +83,7 @@ async function upsertProposal(
 }
 
 export async function GET() {
-  if (!isSupabaseConfigured()) {
+  if (!isDatabaseConfigured()) {
     return NextResponse.json({ proposals: [], source: 'none' })
   }
 
@@ -99,7 +99,9 @@ export async function GET() {
     }
 
     return NextResponse.json({
-      proposals: dropLegacyStellarProposals((data || []).map((row) => rowToProposal(row))),
+      proposals: dropLegacyStellarProposals(
+        (data || []).map((row: Parameters<typeof rowToProposal>[0]) => rowToProposal(row)),
+      ),
       source: 'supabase',
     })
   } catch (err) {
@@ -109,7 +111,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (!isSupabaseConfigured()) {
+  if (!isDatabaseConfigured()) {
     return NextResponse.json({ success: false, error: 'Supabase not configured' }, { status: 503 })
   }
 
@@ -136,7 +138,7 @@ export async function POST(request: Request) {
 
 /** Replace/sync full proposal list (mirrors localStorage bulk save). */
 export async function PUT(request: Request) {
-  if (!isSupabaseConfigured()) {
+  if (!isDatabaseConfigured()) {
     return NextResponse.json({ success: false, error: 'Supabase not configured' }, { status: 503 })
   }
 

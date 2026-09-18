@@ -1,4 +1,5 @@
 import type { UserRole } from '../types/holder'
+import { authHeaders } from '../utils/authSession'
 
 export type SyncWalletSessionInput = {
   wallet: string
@@ -7,7 +8,7 @@ export type SyncWalletSessionInput = {
   email?: string
 }
 
-/** Upsert organizer / sponsor / participant row in Supabase when a wallet signs in. */
+/** Upsert organizer / sponsor / participant row when a user signs in. */
 export async function syncWalletSession(
   input: SyncWalletSessionInput,
 ): Promise<{ success: boolean; error?: string }> {
@@ -19,7 +20,7 @@ export async function syncWalletSession(
   try {
     const res = await fetch('/api/session/sync', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         wallet,
         role: input.role,
