@@ -219,7 +219,6 @@ exports.handler = async (event) => {
         { name: 'NEXT_PUBLIC_S3_BUCKET', value: assetsBucket.bucketName },
         { name: 'NEXT_PUBLIC_CLOUDFRONT_URL', value: `https://${distribution.distributionDomainName}` },
         { name: 'NEXT_PUBLIC_SNS_TOPIC_ARN', value: alertsTopic.topicArn },
-        { name: 'AWS_REGION', value: this.region },
       ],
     })
 

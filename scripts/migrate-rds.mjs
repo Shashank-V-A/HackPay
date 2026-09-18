@@ -27,8 +27,8 @@ const files = [
 ]
 
 const client = new pg.Client({
-  connectionString: databaseUrl,
-  ssl: databaseUrl.includes('sslmode=disable') ? false : { rejectUnauthorized: false },
+  connectionString: databaseUrl.replace(/[?&]sslmode=[^&]*/g, ''),
+  ssl: { rejectUnauthorized: false },
 })
 
 await client.connect()

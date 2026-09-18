@@ -23,10 +23,8 @@ export function getPgPool(): pg.Pool {
     throw new Error('DATABASE_URL is not set')
   }
   pool = new pg.Pool({
-    connectionString,
-    ssl: connectionString.includes('sslmode=disable')
-      ? undefined
-      : { rejectUnauthorized: false },
+    connectionString: connectionString.replace(/[?&]sslmode=[^&]*/g, ''),
+    ssl: { rejectUnauthorized: false },
     max: 5,
   })
   return pool
