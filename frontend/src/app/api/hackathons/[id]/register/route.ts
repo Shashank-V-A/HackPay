@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { createSupabaseServerClient } from '@/lib/db/server'
 import { isDatabaseConfigured } from '@/lib/aws/dbReady'
-import { registerWalletForHackathon } from '@/lib/supabase/registerParticipant'
+import { registerWalletForHackathon } from '@/lib/db/registerParticipant'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -13,7 +13,7 @@ export async function POST(request: Request, context: RouteContext) {
 
   if (!isDatabaseConfigured()) {
     return NextResponse.json(
-      { success: false, error: 'Database is not configured (DATABASE_URL or Supabase)' },
+      { success: false, error: 'DATABASE_URL is not configured (AWS RDS)' },
       { status: 503 },
     )
   }

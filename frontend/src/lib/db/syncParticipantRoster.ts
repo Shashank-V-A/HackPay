@@ -6,9 +6,9 @@ type SupabaseClient = ReturnType<typeof import('./server').createSupabaseServerC
 function formatSupabaseError(context: string, error: { message: string; code?: string }): Error {
   const hint =
     error.code === '42501' || error.message.toLowerCase().includes('row-level security')
-      ? ' Apply supabase/migrations/002_participants_rls.sql in the Supabase SQL Editor.'
+      ? ' Apply infra/sql migrations against RDS (npm run migrate:rds).'
       : error.code === '42P01' || error.code === 'PGRST205'
-        ? ' The hackathon_registrations table is missing — run migration 002_participants_rls.sql.'
+        ? ' The hackathon_registrations table is missing — run npm run migrate:rds.'
         : ''
   return new Error(`${context}: ${error.message}.${hint}`)
 }

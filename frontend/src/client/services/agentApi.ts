@@ -12,7 +12,7 @@ export async function tickAgent(): Promise<AgentTickResult | null> {
     const data = (await res.json()) as Partial<AgentTickResult>
     if (!data || typeof data !== 'object') return null
     const source =
-      data.source === 'rds' || data.source === 'supabase' || data.source === 'none'
+      data.source === 'rds' || data.source === 'none'
         ? data.source
         : 'none'
     return {

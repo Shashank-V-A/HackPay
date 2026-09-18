@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { createSupabaseServerClient } from '@/lib/db/server'
 import { isDatabaseConfigured } from '@/lib/aws/dbReady'
-import { proposalToRow, rowToProposal } from '@/lib/supabase/mappers'
-import { syncExecutedPayouts } from '@/lib/supabase/syncExecutedPayouts'
-import { isUuid } from '@/lib/supabase/ids'
-import { errorMessage, formatSupabaseApiError } from '@/lib/supabase/errors'
+import { proposalToRow, rowToProposal } from '@/lib/db/mappers'
+import { syncExecutedPayouts } from '@/lib/db/syncExecutedPayouts'
+import { isUuid } from '@/lib/db/ids'
+import { errorMessage, formatSupabaseApiError } from '@/lib/db/errors'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -23,7 +23,7 @@ async function findProposal(supabase: ReturnType<typeof createSupabaseServerClie
 export async function PATCH(request: Request, context: RouteContext) {
   const { id } = await context.params
   if (!isDatabaseConfigured()) {
-    return NextResponse.json({ success: false, error: 'Supabase not configured' }, { status: 503 })
+    return NextResponse.json({ success: false, error: 'DATABASE_URL not configured (AWS RDS)' }, { status: 503 })
   }
 
   try {

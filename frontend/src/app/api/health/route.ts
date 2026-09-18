@@ -1,11 +1,6 @@
 import { NextResponse } from 'next/server'
 import { INR_VAULT_ID, isRazorpayLiveConfigured, isRazorpayTestMode } from '@/lib/backend/config'
 import {
-  getSupabaseConfigSource,
-  getSupabaseUrl,
-  isSupabaseConfigured,
-} from '@/lib/supabase/env'
-import {
   getActiveDataBackend,
   getAwsRegion,
   getCloudFrontUrl,
@@ -21,11 +16,11 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const configured = isSupabaseConfigured()
   return NextResponse.json({
     ok: true,
     product: 'HackPay',
     rail: 'INR',
+    hosting: 'aws-amplify',
     vaultId: INR_VAULT_ID,
     razorpayConfigured: isRazorpayLiveConfigured(),
     razorpayTestMode: isRazorpayTestMode(),
@@ -41,9 +36,5 @@ export async function GET() {
       snsTopicArn: isSnsConfigured() ? getSnsTopicArn() : null,
       agentCronSecretConfigured: Boolean(process.env.AGENT_CRON_SECRET?.trim()),
     },
-    supabaseConfigured: configured,
-    supabaseUrl: configured ? getSupabaseUrl() : null,
-    supabaseConfigSource: getSupabaseConfigSource(),
-    hasSupabaseServiceRole: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()),
   })
 }

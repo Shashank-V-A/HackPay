@@ -6,8 +6,8 @@
     "clean": "node scripts/clean-next.mjs",
     "dev": "next dev",
     "dev:clean": "node scripts/clean-next.mjs && next dev",
-    "build": "node scripts/verify-supabase-env.mjs && next build",
-    "build:verify": "node scripts/verify-supabase-env.mjs && next build",
+    "build": "node scripts/verify-aws-env.mjs && next build",
+    "build:verify": "node scripts/verify-aws-env.mjs && next build",
     "build:clean": "node scripts/clean-next.mjs && next build",
     "start": "next start",
     "lint": "eslint"
@@ -17,7 +17,6 @@
     "@aws-sdk/client-sns": "^3.1135.0",
     "@aws-sdk/s3-request-presigner": "^3.1135.0",
     "@base-ui/react": "^1.7.0",
-    "@supabase/supabase-js": "^2.112.4",
     "amazon-cognito-identity-js": "^6.3.20",
     "aws-jwt-verify": "^5.2.1",
     "buffer": "^6.0.3",

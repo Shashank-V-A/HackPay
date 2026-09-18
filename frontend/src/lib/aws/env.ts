@@ -61,20 +61,10 @@ export function getAgentCronSecret(): string {
   return process.env.AGENT_CRON_SECRET?.trim() || ''
 }
 
-/** Prefer RDS when DATABASE_URL is set; otherwise fall back to Supabase. */
-export function getDataBackend(): 'rds' | 'supabase' | 'none' {
-  if (isRdsConfigured()) return 'rds'
-  if (
-    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
-    process.env.SUPABASE_URL?.trim()
-  ) {
-    return 'supabase'
-  }
-  // Existing project may still use baked-in Supabase defaults
-  return 'supabase'
+export function getDataBackend(): 'rds' | 'none' {
+  return isRdsConfigured() ? 'rds' : 'none'
 }
 
-/** Alias used across API routes / agent. */
-export function getActiveDataBackend(): 'rds' | 'supabase' | 'none' {
+export function getActiveDataBackend(): 'rds' | 'none' {
   return getDataBackend()
 }

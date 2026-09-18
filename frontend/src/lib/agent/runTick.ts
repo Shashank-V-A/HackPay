@@ -9,13 +9,12 @@ import {
 import { fundingGapXlm, canExecuteRelease, getPayoutWorkflowStage } from '@/client/utils/payoutWorkflow'
 import { handleExecute } from '@/lib/backend/escrowHandlers'
 import { appendAgentLog, summarizeAgentLog } from '@/lib/agent/summarize'
-import { isSupabaseConfigured } from '@/lib/supabase/env'
 import { getActiveDataBackend, isRdsConfigured } from '@/lib/aws/env'
 import { buildReceiptKey, uploadAuditObject } from '@/lib/aws/s3'
 import { publishAlert } from '@/lib/aws/sns'
-import { rowToHackathon, rowToProposal } from '@/lib/supabase/mappers'
-import { createSupabaseServerClient } from '@/lib/supabase/server'
-import { syncExecutedPayouts } from '@/lib/supabase/syncExecutedPayouts'
+import { rowToHackathon, rowToProposal } from '@/lib/db/mappers'
+import { createSupabaseServerClient } from '@/lib/db/server'
+import { syncExecutedPayouts } from '@/lib/db/syncExecutedPayouts'
 
 export type AgentTickAction = {
   stage: AgentStage
@@ -28,21 +27,18 @@ export type AgentTickAction = {
 export type AgentTickResult = {
   ok: boolean
   ranAt: string
-  source: 'rds' | 'supabase' | 'none'
+  source: 'rds' | 'none'
   actions: AgentTickAction[]
   summary: string
   error?: string
 }
 
 function isDataReady(): boolean {
-  return isRdsConfigured() || isSupabaseConfigured()
+  return isRdsConfigured()
 }
 
 function dataSource(): AgentTickResult['source'] {
-  const backend = getActiveDataBackend()
-  if (backend === 'rds') return 'rds'
-  if (backend === 'supabase') return 'supabase'
-  return 'none'
+  return getActiveDataBackend()
 }
 
 function nowIso() {
@@ -98,7 +94,7 @@ export async function runAgentTick(): Promise<AgentTickResult> {
       source: 'none',
       actions: [],
       summary: summarizeAgentLog([]),
-      error: 'Database is not configured (DATABASE_URL or Supabase)',
+      error: 'DATABASE_URL is not configured (AWS RDS)',
     }
   }
 

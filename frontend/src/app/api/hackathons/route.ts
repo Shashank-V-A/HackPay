@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { createSupabaseServerClient } from '@/lib/db/server'
 import { databaseSourceLabel, isDatabaseConfigured } from '@/lib/aws/dbReady'
 import {
   ensureEscrowForHackathon,
   ensureOrganizer,
   hackathonToRow,
   rowToHackathon,
-} from '@/lib/supabase/mappers'
+} from '@/lib/db/mappers'
 import type { Hackathon } from '@/client/types/hackathon'
 import { dropLegacyStellarHackathons } from '@/client/utils/legacyWeb3Data'
 
@@ -47,7 +47,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   if (!isDatabaseConfigured()) {
     return NextResponse.json(
-      { success: false, error: 'Database is not configured (DATABASE_URL or Supabase)' },
+      { success: false, error: 'DATABASE_URL is not configured (AWS RDS)' },
       { status: 503 },
     )
   }

@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase/server'
-import { isDatabaseConfigured } from '@/lib/aws/dbReady'
-import { proposalToRow, rowToProposal } from '@/lib/supabase/mappers'
-import { syncExecutedPayouts } from '@/lib/supabase/syncExecutedPayouts'
-import { coerceUuid } from '@/lib/supabase/ids'
-import { findHackathonById } from '@/lib/supabase/registerParticipant'
-import { errorMessage, formatSupabaseApiError } from '@/lib/supabase/errors'
+import { createSupabaseServerClient } from '@/lib/db/server'
+import { databaseSourceLabel, isDatabaseConfigured } from '@/lib/aws/dbReady'
+import { proposalToRow, rowToProposal } from '@/lib/db/mappers'
+import { syncExecutedPayouts } from '@/lib/db/syncExecutedPayouts'
+import { coerceUuid } from '@/lib/db/ids'
+import { findHackathonById } from '@/lib/db/registerParticipant'
+import { errorMessage, formatSupabaseApiError } from '@/lib/db/errors'
 import { dropLegacyStellarProposals } from '@/client/utils/legacyWeb3Data'
 
 export const runtime = 'nodejs'
@@ -102,7 +102,7 @@ export async function GET() {
       proposals: dropLegacyStellarProposals(
         (data || []).map((row: Parameters<typeof rowToProposal>[0]) => rowToProposal(row)),
       ),
-      source: 'supabase',
+      source: databaseSourceLabel(),
     })
   } catch (err) {
     const message = errorMessage(err, 'Failed to load proposals')
@@ -112,7 +112,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   if (!isDatabaseConfigured()) {
-    return NextResponse.json({ success: false, error: 'Supabase not configured' }, { status: 503 })
+    return NextResponse.json({ success: false, error: 'DATABASE_URL not configured (AWS RDS)' }, { status: 503 })
   }
 
   try {
@@ -139,7 +139,7 @@ export async function POST(request: Request) {
 /** Replace/sync full proposal list (mirrors localStorage bulk save). */
 export async function PUT(request: Request) {
   if (!isDatabaseConfigured()) {
-    return NextResponse.json({ success: false, error: 'Supabase not configured' }, { status: 503 })
+    return NextResponse.json({ success: false, error: 'DATABASE_URL not configured (AWS RDS)' }, { status: 503 })
   }
 
   try {

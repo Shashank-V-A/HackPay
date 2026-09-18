@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase/server'
-import { isSupabaseConfigured } from '@/lib/supabase/env'
-import { getActiveDataBackend, isRdsConfigured } from '@/lib/aws/env'
+import { createSupabaseServerClient } from '@/lib/db/server'
+import { isDatabaseConfigured } from '@/lib/aws/dbReady'
+import { getActiveDataBackend } from '@/lib/aws/env'
 import { AuthError, requireAuthIfConfigured } from '@/lib/aws/auth'
 import {
   ensureOrganizer,
   ensureParticipant,
   ensureSponsor,
-} from '@/lib/supabase/mappers'
+} from '@/lib/db/mappers'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -20,14 +20,11 @@ type SyncBody = {
 }
 
 export async function POST(request: Request) {
-  const backend = getActiveDataBackend()
-  if (backend === 'none' || (backend === 'supabase' && !isSupabaseConfigured() && !isRdsConfigured())) {
-    if (!isRdsConfigured() && !isSupabaseConfigured()) {
-      return NextResponse.json(
-        { success: false, error: 'Database is not configured (set DATABASE_URL or Supabase)' },
-        { status: 503 },
-      )
-    }
+  if (!isDatabaseConfigured()) {
+    return NextResponse.json(
+      { success: false, error: 'DATABASE_URL is not configured (AWS RDS)' },
+      { status: 503 },
+    )
   }
 
   try {
@@ -46,15 +43,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'valid role is required' }, { status: 400 })
     }
 
-    const supabase = createSupabaseServerClient()
+    const db = createSupabaseServerClient()
     let profileId: string
 
     if (role === 'organizer') {
-      profileId = await ensureOrganizer(supabase, wallet, name, email)
+      profileId = await ensureOrganizer(db, wallet, name, email)
     } else if (role === 'sponsor') {
-      profileId = await ensureSponsor(supabase, wallet, name, email)
+      profileId = await ensureSponsor(db, wallet, name, email)
     } else {
-      profileId = await ensureParticipant(supabase, wallet, name, email)
+      profileId = await ensureParticipant(db, wallet, name, email)
     }
 
     return NextResponse.json({
