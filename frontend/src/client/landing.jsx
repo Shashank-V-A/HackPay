@@ -458,22 +458,19 @@ function Landing() {
           <span>HackPay · hackathon prize escrow powered by Razorpay INR and agentic dual-control.</span>
           <ul className="pv-footer__links">
             <li>
-              <a href="/holder">Participant portal</a>
+              <a href="/docs">Docs</a>
             </li>
             <li>
               <a href="/past-events">Past events</a>
+            </li>
+            <li>
+              <a href="/holder">Participant</a>
             </li>
             <li>
               <a href="/organizer">Organizer</a>
             </li>
             <li>
               <a href="/verifier">Sponsor</a>
-            </li>
-            <li>
-              <a href="https://razorpay.com/" target="_blank" rel="noreferrer">
-                Razorpay
-                <Icon name="external" size={12} />
-              </a>
             </li>
           </ul>
         </div>

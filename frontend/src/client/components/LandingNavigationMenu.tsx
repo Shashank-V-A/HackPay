@@ -26,6 +26,11 @@ const PRODUCT_LINKS: NavCard[] = [
     href: '/#how',
   },
   {
+    title: 'Docs',
+    description: 'Escrow, Razorpay, AWS, agent, and roles — full project guide.',
+    href: '/docs',
+  },
+  {
     title: 'Browse events',
     description: 'Open hackathons accepting registrations right now.',
     href: '/#events',

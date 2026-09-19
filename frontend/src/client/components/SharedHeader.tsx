@@ -41,12 +41,13 @@ interface Session {
 
 /**
  * Which portal links to show. Behaviour is unchanged from the original header:
- * the landing and holder pages only ever advertise the wallet; once a session
- * exists we show just that role's portal; with no session we show all three.
+ * once a session exists we show just that role's portal; with no session we show
+ * all three. On the participant (/holder) page we hide the self-link — you're
+ * already there, so "Escrow Wallet" is redundant.
  */
 function visibleTabs(activeTab: string, session: Session | null): Tab[] {
-  if (activeTab === 'landing' || activeTab === 'holder') {
-    return ALL_TABS.filter((tab) => tab.id === 'holder')
+  if (activeTab === 'landing' || activeTab === 'holder' || activeTab === 'docs') {
+    return []
   }
   if (session) {
     const allowed = ROLE_TAB[session.role]
