@@ -23,7 +23,7 @@ async function findProposal(supabase: ReturnType<typeof createSupabaseServerClie
 export async function PATCH(request: Request, context: RouteContext) {
   const { id } = await context.params
   if (!isDatabaseConfigured()) {
-    return NextResponse.json({ success: false, error: 'DATABASE_URL not configured (AWS RDS)' }, { status: 503 })
+    return NextResponse.json({ success: false, error: 'DynamoDB is not configured' }, { status: 503 })
   }
 
   try {

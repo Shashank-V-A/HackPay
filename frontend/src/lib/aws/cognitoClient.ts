@@ -63,7 +63,9 @@ export function cognitoSignUp(input: {
   const pool = getUserPool()
   const email = input.email.trim().toLowerCase()
   // Pool uses email as username — do not send a conflicting email attribute.
+  // Email-as-username pools still need the standard `email` attribute for tokens / aliases.
   const attributeList = [
+    new CognitoUserAttribute({ Name: 'email', Value: email }),
     new CognitoUserAttribute({ Name: 'name', Value: input.name.trim() || email.split('@')[0] }),
     new CognitoUserAttribute({ Name: 'custom:role', Value: input.role }),
   ]
@@ -143,9 +145,17 @@ function normalizeCognitoError(err: unknown): Error {
     return new Error('Account is not confirmed yet. Try again in a moment or use Sign in.')
   }
   if (code === 'NotAuthorizedException') {
-    return new Error('Incorrect email or password.')
+    return new Error(
+      'Incorrect email or password — or no account yet. Use Create account first, then Sign in.',
+    )
   }
   if (code === 'InvalidParameterException') {
+    // Common when `email` attribute conflicts with username on some pool configs.
+    if (/email/i.test(message) && /exist|alias|username/i.test(message)) {
+      return new Error(
+        'Cognito rejected this email as username. Try Create account again, or redeploy the Cognito pool.',
+      )
+    }
     return new Error(message)
   }
   if (code === 'UserNotFoundException') {

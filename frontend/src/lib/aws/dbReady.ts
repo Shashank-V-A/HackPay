@@ -1,9 +1,9 @@
-import { getActiveDataBackend, isRdsConfigured } from '@/lib/aws/env'
+import { getActiveDataBackend, isDynamoConfigured } from '@/lib/aws/env'
 
 export function isDatabaseConfigured(): boolean {
-  return isRdsConfigured()
+  return isDynamoConfigured()
 }
 
-export function databaseSourceLabel(): 'rds' | 'none' {
+export function databaseSourceLabel(): 'dynamodb' | 'none' {
   return getActiveDataBackend()
 }

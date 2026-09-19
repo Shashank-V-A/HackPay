@@ -1,23 +1,23 @@
 /**
- * Unified data client — AWS RDS only (Ship It).
+ * Unified data client — Amazon DynamoDB.
  */
-import { isRdsConfigured } from '@/lib/aws/env'
-import { createRdsDataClient } from '@/lib/aws/rds'
+import { isDynamoConfigured } from '@/lib/aws/env'
+import { createDynamoDataClient } from '@/lib/aws/dynamo'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type HackPayDataClient = any
 
 let cached: HackPayDataClient | null = null
 
-export function getActiveDataBackend(): 'rds' | 'none' {
-  return isRdsConfigured() ? 'rds' : 'none'
+export function getActiveDataBackend(): 'dynamodb' | 'none' {
+  return isDynamoConfigured() ? 'dynamodb' : 'none'
 }
 
 export function createDataClient(): HackPayDataClient {
-  if (!isRdsConfigured()) {
-    throw new Error('DATABASE_URL is not set. Configure AWS RDS (see AWS.md).')
+  if (!isDynamoConfigured()) {
+    throw new Error('DYNAMODB_TABLE_NAME is not set. Deploy HackPayStack CDK (see AWS.md).')
   }
-  if (!cached) cached = createRdsDataClient()
+  if (!cached) cached = createDynamoDataClient()
   return cached
 }
 

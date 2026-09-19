@@ -9,7 +9,7 @@ import {
 import { fundingGapXlm, canExecuteRelease, getPayoutWorkflowStage } from '@/client/utils/payoutWorkflow'
 import { handleExecute } from '@/lib/backend/escrowHandlers'
 import { appendAgentLog, summarizeAgentLog } from '@/lib/agent/summarize'
-import { getActiveDataBackend, isRdsConfigured } from '@/lib/aws/env'
+import { getActiveDataBackend, isDynamoConfigured } from '@/lib/aws/env'
 import { buildReceiptKey, uploadAuditObject } from '@/lib/aws/s3'
 import { publishAlert } from '@/lib/aws/sns'
 import { rowToHackathon, rowToProposal } from '@/lib/db/mappers'
@@ -27,14 +27,14 @@ export type AgentTickAction = {
 export type AgentTickResult = {
   ok: boolean
   ranAt: string
-  source: 'rds' | 'none'
+  source: 'dynamodb' | 'none'
   actions: AgentTickAction[]
   summary: string
   error?: string
 }
 
 function isDataReady(): boolean {
-  return isRdsConfigured()
+  return isDynamoConfigured()
 }
 
 function dataSource(): AgentTickResult['source'] {
@@ -94,7 +94,7 @@ export async function runAgentTick(): Promise<AgentTickResult> {
       source: 'none',
       actions: [],
       summary: summarizeAgentLog([]),
-      error: 'DATABASE_URL is not configured (AWS RDS)',
+      error: 'DYNAMODB_TABLE_NAME is not configured',
     }
   }
 

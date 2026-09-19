@@ -4,12 +4,9 @@ import { ensureParticipant } from './mappers'
 type SupabaseClient = ReturnType<typeof import('./server').createSupabaseServerClient>
 
 function formatSupabaseError(context: string, error: { message: string; code?: string }): Error {
-  const hint =
-    error.code === '42501' || error.message.toLowerCase().includes('row-level security')
-      ? ' Apply infra/sql migrations against RDS (npm run migrate:rds).'
-      : error.code === '42P01' || error.code === 'PGRST205'
-        ? ' The hackathon_registrations table is missing — run npm run migrate:rds.'
-        : ''
+  const hint = /ResourceNotFound|ValidationException|not configured/i.test(error.message)
+    ? ' Check DYNAMODB_TABLE_NAME and that HackPayStack is deployed.'
+    : ''
   return new Error(`${context}: ${error.message}.${hint}`)
 }
 

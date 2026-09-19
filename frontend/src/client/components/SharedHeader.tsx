@@ -168,12 +168,11 @@ export default function SharedHeader({
                   </span>
                   <button
                     type="button"
-                    className="pv-btn pv-btn--ghost pv-btn--sm pv-btn--icon"
+                    className="pv-btn pv-btn--secondary pv-btn--sm"
                     onClick={handleDisconnect}
-                    aria-label="Disconnect wallet"
-                    title="Disconnect wallet"
                   >
-                    <Icon name="logout" />
+                    <Icon name="logout" size={14} />
+                    Sign out
                   </button>
                 </>
               ) : (
@@ -185,12 +184,11 @@ export default function SharedHeader({
           ) : session ? (
             <button
               type="button"
-              className="pv-btn pv-btn--ghost pv-btn--sm pv-btn--icon"
+              className="pv-btn pv-btn--secondary pv-btn--sm"
               onClick={handleDisconnect}
-              aria-label="Disconnect wallet"
-              title="Disconnect wallet"
             >
-              <Icon name="logout" />
+              <Icon name="logout" size={14} />
+              Sign out
             </button>
           ) : null}
 

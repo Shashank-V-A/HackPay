@@ -133,6 +133,10 @@ export default function HolderApp() {
     }
     if (role === 'organizer') {
       window.location.href = '/issuer'
+      return
+    }
+    if (role === 'participant') {
+      setActiveView('participant')
     }
   }
 

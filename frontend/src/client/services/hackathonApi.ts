@@ -69,7 +69,7 @@ export async function fetchHackathons(filters?: {
         throw new Error(data.error || `Failed to load hackathons (${res.status})`)
       }
       if (
-        (data.source === 'rds') &&
+        (data.source === 'dynamodb') &&
         Array.isArray(data.hackathons)
       ) {
         const normalized = normalizeHackathons(data.hackathons)
@@ -254,7 +254,7 @@ export async function fetchProposals(): Promise<Record<string, unknown>[]> {
     const res = await fetch('/api/proposals', { cache: 'no-store' })
     if (!res.ok) throw new Error('API error')
     const data = await parseJson<{ proposals?: Record<string, unknown>[]; source?: string }>(res)
-    if (data.source === 'rds' && Array.isArray(data.proposals)) {
+    if (data.source === 'dynamodb' && Array.isArray(data.proposals)) {
       const cleaned = dropLegacyStellarProposals(data.proposals)
       try {
         localStorage.setItem(PROPOSALS_STORAGE_KEY, JSON.stringify(cleaned))

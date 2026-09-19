@@ -165,17 +165,23 @@ exports.handler = async (event) => {
       ],
     })
 
-    const oai = new cloudfront.OriginAccessIdentity(this, 'AssetsOai')
-    assetsBucket.grantRead(oai)
-
-    const distribution = new cloudfront.Distribution(this, 'HackPayCdn', {
-      comment: 'HackPay receipts and audit assets',
-      defaultBehavior: {
-        origin: new origins.S3Origin(assetsBucket, { originAccessIdentity: oai }),
-        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-        cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
-      },
-    })
+    // Some new AWS accounts block CloudFront until Support verifies the account.
+    // Deploy with: npx cdk deploy -c skipCloudFront=true
+    const skipCloudFront = String(this.node.tryGetContext('skipCloudFront') || '') === 'true'
+    let cloudFrontUrl = `https://${assetsBucket.bucketRegionalDomainName}`
+    if (!skipCloudFront) {
+      const oai = new cloudfront.OriginAccessIdentity(this, 'AssetsOai')
+      assetsBucket.grantRead(oai)
+      const distribution = new cloudfront.Distribution(this, 'HackPayCdn', {
+        comment: 'HackPay receipts and audit assets',
+        defaultBehavior: {
+          origin: new origins.S3Origin(assetsBucket, { originAccessIdentity: oai }),
+          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+        },
+      })
+      cloudFrontUrl = `https://${distribution.distributionDomainName}`
+    }
 
     // ── SNS (organizer / sponsor alerts) ─────────────────────
     const alertsTopic = new sns.Topic(this, 'HackPayAlerts', {
@@ -224,7 +230,7 @@ exports.handler = async (event) => {
         { name: 'NEXT_PUBLIC_COGNITO_USER_POOL_ID', value: userPool.userPoolId },
         { name: 'NEXT_PUBLIC_COGNITO_CLIENT_ID', value: userPoolClient.userPoolClientId },
         { name: 'NEXT_PUBLIC_S3_BUCKET', value: assetsBucket.bucketName },
-        { name: 'NEXT_PUBLIC_CLOUDFRONT_URL', value: `https://${distribution.distributionDomainName}` },
+        { name: 'NEXT_PUBLIC_CLOUDFRONT_URL', value: cloudFrontUrl },
         { name: 'NEXT_PUBLIC_SNS_TOPIC_ARN', value: alertsTopic.topicArn },
       ],
     })
@@ -267,7 +273,10 @@ exports.handler = async (event) => {
     new cdk.CfnOutput(this, 'DatabaseName', { value: 'hackpay' })
     new cdk.CfnOutput(this, 'AssetsBucketName', { value: assetsBucket.bucketName })
     new cdk.CfnOutput(this, 'CloudFrontUrl', {
-      value: `https://${distribution.distributionDomainName}`,
+      value: cloudFrontUrl,
+      description: skipCloudFront
+        ? 'CloudFront skipped (account unverified); S3 regional domain used as placeholder'
+        : 'CloudFront distribution URL',
     })
     new cdk.CfnOutput(this, 'AlertsTopicArn', { value: alertsTopic.topicArn })
     new cdk.CfnOutput(this, 'AgentCronSecretArn', { value: agentCronSecret.secretArn })

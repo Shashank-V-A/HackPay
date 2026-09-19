@@ -24,6 +24,7 @@ const files = [
   '002_participants_rls.sql',
   '003_payouts_rls.sql',
   '004_tighten_rls.sql',
+  '005_participant_profile.sql',
 ]
 
 const client = new pg.Client({

@@ -17,6 +17,18 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_RAZORPAY_KEY_ID:
       process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '',
+    NEXT_PUBLIC_AWS_REGION:
+      process.env.NEXT_PUBLIC_AWS_REGION || process.env.AWS_REGION || 'ap-south-1',
+    NEXT_PUBLIC_COGNITO_USER_POOL_ID:
+      process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID || '',
+    NEXT_PUBLIC_COGNITO_CLIENT_ID:
+      process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID || '',
+    NEXT_PUBLIC_S3_BUCKET:
+      process.env.NEXT_PUBLIC_S3_BUCKET || process.env.AWS_S3_BUCKET || '',
+    NEXT_PUBLIC_CLOUDFRONT_URL:
+      process.env.NEXT_PUBLIC_CLOUDFRONT_URL || '',
+    NEXT_PUBLIC_SNS_TOPIC_ARN:
+      process.env.NEXT_PUBLIC_SNS_TOPIC_ARN || process.env.SNS_TOPIC_ARN || '',
   },
   eslint: {
     ignoreDuringBuilds: true,

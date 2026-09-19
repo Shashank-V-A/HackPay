@@ -112,7 +112,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   if (!isDatabaseConfigured()) {
-    return NextResponse.json({ success: false, error: 'DATABASE_URL not configured (AWS RDS)' }, { status: 503 })
+    return NextResponse.json({ success: false, error: 'DynamoDB is not configured' }, { status: 503 })
   }
 
   try {
@@ -139,7 +139,7 @@ export async function POST(request: Request) {
 /** Replace/sync full proposal list (mirrors localStorage bulk save). */
 export async function PUT(request: Request) {
   if (!isDatabaseConfigured()) {
-    return NextResponse.json({ success: false, error: 'DATABASE_URL not configured (AWS RDS)' }, { status: 503 })
+    return NextResponse.json({ success: false, error: 'DynamoDB is not configured' }, { status: 503 })
   }
 
   try {

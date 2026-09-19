@@ -4,10 +4,11 @@ import {
   getActiveDataBackend,
   getAwsRegion,
   getCloudFrontUrl,
+  getDynamoTableName,
   getS3Bucket,
   getSnsTopicArn,
   isCognitoConfigured,
-  isRdsConfigured,
+  isDynamoConfigured,
   isS3Configured,
   isSnsConfigured,
 } from '@/lib/aws/env'
@@ -28,7 +29,8 @@ export async function GET() {
     aws: {
       region: getAwsRegion(),
       cognito: isCognitoConfigured(),
-      rds: isRdsConfigured(),
+      dynamodb: isDynamoConfigured(),
+      dynamoTable: isDynamoConfigured() ? getDynamoTableName() : null,
       s3: isS3Configured(),
       s3Bucket: isS3Configured() ? getS3Bucket() : null,
       cloudFrontUrl: getCloudFrontUrl() || null,
