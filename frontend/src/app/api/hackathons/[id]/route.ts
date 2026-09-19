@@ -19,7 +19,7 @@ async function findHackathon(supabase: ReturnType<typeof createSupabaseServerCli
 export async function GET(_request: Request, context: RouteContext) {
   const { id } = await context.params
   if (!isDatabaseConfigured()) {
-    return NextResponse.json({ error: 'DATABASE_URL not configured (AWS RDS)' }, { status: 503 })
+    return NextResponse.json({ error: 'DynamoDB is not configured' }, { status: 503 })
   }
 
   const supabase = createSupabaseServerClient()
@@ -33,7 +33,7 @@ export async function GET(_request: Request, context: RouteContext) {
 export async function PATCH(request: Request, context: RouteContext) {
   const { id } = await context.params
   if (!isDatabaseConfigured()) {
-    return NextResponse.json({ success: false, error: 'DATABASE_URL not configured (AWS RDS)' }, { status: 503 })
+    return NextResponse.json({ success: false, error: 'DynamoDB is not configured' }, { status: 503 })
   }
 
   try {
@@ -83,7 +83,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 export async function DELETE(request: Request, context: RouteContext) {
   const { id } = await context.params
   if (!isDatabaseConfigured()) {
-    return NextResponse.json({ success: false, error: 'DATABASE_URL not configured (AWS RDS)' }, { status: 503 })
+    return NextResponse.json({ success: false, error: 'DynamoDB is not configured' }, { status: 503 })
   }
 
   const { searchParams } = new URL(request.url)

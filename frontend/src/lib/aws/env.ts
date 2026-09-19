@@ -1,5 +1,5 @@
 /**
- * AWS env helpers for HackPay (Cognito, RDS, S3, SNS, cron secret).
+ * AWS env helpers for HackPay (Cognito, DynamoDB, S3, SNS, cron secret).
  */
 
 export function getAwsRegion(): string {
@@ -25,12 +25,16 @@ export function getCognitoClientId(): string {
   return process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID?.trim() || ''
 }
 
-export function isRdsConfigured(): boolean {
-  return Boolean(process.env.DATABASE_URL?.trim())
+export function getDynamoTableName(): string {
+  return (
+    process.env.DYNAMODB_TABLE_NAME?.trim() ||
+    process.env.HACKPAY_TABLE_NAME?.trim() ||
+    ''
+  )
 }
 
-export function getDatabaseUrl(): string {
-  return process.env.DATABASE_URL?.trim() || ''
+export function isDynamoConfigured(): boolean {
+  return Boolean(getDynamoTableName())
 }
 
 export function isS3Configured(): boolean {
@@ -61,10 +65,10 @@ export function getAgentCronSecret(): string {
   return process.env.AGENT_CRON_SECRET?.trim() || ''
 }
 
-export function getDataBackend(): 'rds' | 'none' {
-  return isRdsConfigured() ? 'rds' : 'none'
+export function getDataBackend(): 'dynamodb' | 'none' {
+  return isDynamoConfigured() ? 'dynamodb' : 'none'
 }
 
-export function getActiveDataBackend(): 'rds' | 'none' {
+export function getActiveDataBackend(): 'dynamodb' | 'none' {
   return getDataBackend()
 }

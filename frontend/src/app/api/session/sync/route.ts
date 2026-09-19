@@ -22,7 +22,7 @@ type SyncBody = {
 export async function POST(request: Request) {
   if (!isDatabaseConfigured()) {
     return NextResponse.json(
-      { success: false, error: 'DATABASE_URL is not configured (AWS RDS)' },
+      { success: false, error: 'DYNAMODB_TABLE_NAME is not configured' },
       { status: 503 },
     )
   }

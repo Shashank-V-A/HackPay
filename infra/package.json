@@ -2,7 +2,7 @@
   "name": "hackpay-infra",
   "version": "1.0.0",
   "private": true,
-  "description": "AWS CDK stack for HackPay Ship It (Cognito, RDS, S3, Lambda, EventBridge, SNS, Amplify)",
+  "description": "AWS CDK stack for HackPay Ship It (Cognito, DynamoDB, S3, Lambda, EventBridge, SNS, Amplify)",
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",

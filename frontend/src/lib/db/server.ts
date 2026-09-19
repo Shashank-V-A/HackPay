@@ -1,6 +1,6 @@
 import { createDataClient, type HackPayDataClient } from '@/lib/aws/dataClient'
 
-/** Server data client — Amazon RDS Postgres. */
+/** Server data client — Amazon DynamoDB. */
 export function createDataServerClient(): HackPayDataClient {
   return createDataClient()
 }
