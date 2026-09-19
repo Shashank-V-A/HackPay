@@ -1,4 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import gsap from 'gsap'
+import { useGSAP } from '@gsap/react'
 import SharedHeader from './components/SharedHeader'
 import Icon from './components/Icon'
 import HackathonGlobe from '@/components/ui/usage'
@@ -22,29 +24,28 @@ import {
 } from './utils/format'
 import './styles/index.css'
 
-const SETTLEMENT_RAILS = [
+gsap.registerPlugin(useGSAP)
+
+const TRUST_MARKS = ['Razorpay INR', 'UPI / IMPS', 'Amazon Cognito', 'Dual-control vault', '2-of-2 approval']
+
+const VALUE_TILES = [
   {
-    icon: 'globe',
-    label: 'Razorpay INR',
-    detail: 'Test-mode payouts',
-    href: 'https://razorpay.com/',
-  },
-  {
+    tone: 'blush',
     icon: 'lock',
-    label: INR_VAULT_ID,
-    detail: 'Dual-control vault',
-    href: '/verifier',
-    mono: true,
+    title: 'Lock the prize before judging starts.',
+    text: 'Sponsors fund an INR vault up front. Organizers never front cash, and nobody can pull the money back mid-event.',
   },
   {
+    tone: 'gold',
     icon: 'users',
-    label: '2-of-2 approval',
-    detail: 'Sponsor + organizer',
+    title: 'Neither side can move funds alone.',
+    text: 'Release takes two approvals. The sponsor cannot claw it back. The organizer cannot divert it. Both sides, or nothing.',
   },
   {
+    tone: 'lilac',
     icon: 'send',
-    label: 'UPI / IMPS',
-    detail: 'Winner payouts',
+    title: 'Winners get paid in real rupees.',
+    text: 'After dual approval, payment and git gates run, then Razorpay sends UPI or bank payouts with an auditable receipt.',
   },
 ]
 
@@ -73,6 +74,7 @@ const FEATURES = [
 
 const ROLES = [
   {
+    tone: 'blush',
     title: 'For sponsors',
     href: '/verifier',
     cta: 'Open sponsor console',
@@ -83,6 +85,7 @@ const ROLES = [
     ],
   },
   {
+    tone: 'gold',
     title: 'For organizers',
     href: '/organizer',
     cta: 'Open organizer console',
@@ -93,6 +96,7 @@ const ROLES = [
     ],
   },
   {
+    tone: 'lilac',
     title: 'For participants',
     href: '/holder',
     cta: 'Open participant portal',
@@ -168,8 +172,34 @@ function EventCard({ hackathon }) {
 }
 
 function Landing() {
+  const rootRef = useRef(null)
   const [hackathons, setHackathons] = useState(() =>
     getHackathonsFromStorage().map((h) => enrichHackathonFunding(enrichHackathonLocation(h))),
+  )
+
+  useGSAP(
+    () => {
+      const mm = gsap.matchMedia()
+      mm.add('(prefers-reduced-motion: no-preference)', () => {
+        gsap.from('.pv-hero__copy > *', {
+          y: 28,
+          autoAlpha: 0,
+          duration: 0.75,
+          stagger: 0.1,
+          ease: 'power3.out',
+        })
+        gsap.from('.pv-tile', {
+          y: 36,
+          autoAlpha: 0,
+          duration: 0.65,
+          stagger: 0.12,
+          delay: 0.15,
+          ease: 'power3.out',
+        })
+      })
+      return () => mm.revert()
+    },
+    { scope: rootRef },
   )
 
   useEffect(() => {
@@ -229,7 +259,7 @@ function Landing() {
   }, [hackathons])
 
   return (
-    <div className="pv-shell">
+    <div className="pv-shell" ref={rootRef}>
       <a className="pv-skip-link" href="#main">
         Skip to content
       </a>
@@ -238,64 +268,63 @@ function Landing() {
 
       <main id="main">
         <section className="pv-container">
-          <div className="pv-hero">
+          <div className="pv-hero pv-hero--splash">
             <div className="pv-hero__copy">
-              <h1 className="pv-hero__title">
-                Prize money nobody can move alone.
-              </h1>
+              <h1 className="pv-hero__title">Prize money nobody can move alone.</h1>
               <p className="pv-hero__lede">
-                Sponsors do not want prize funds misused or delayed. Organizers do not want to
-                front cash or take the blame. Winners just want a guaranteed payout once results
-                are final. HackPay holds the rupees until both sides agree.
+                HackPay is where sponsors lock INR, organizers run the event, and winners get paid
+                — only after both sides approve.
               </p>
               <div className="pv-hero__cta">
-                <a href="#events" className="pv-btn pv-btn--primary pv-btn--lg">
-                  Browse events
+                <a href="/holder" className="pv-btn pv-btn--primary pv-btn--lg">
+                  Get started
                 </a>
-                <a href="#how" className="pv-btn pv-btn--secondary pv-btn--lg">
-                  How escrow works
-                  <Icon name="arrowRight" size={15} />
+                <a href="#how" className="pv-hero__textlink">
+                  See how escrow works
                 </a>
               </div>
-              <div className="pv-hero__proof">
-                <div className="pv-hero__proof-item">
-                  <span className="pv-hero__proof-value">{stats.events}</span>
-                  <span className="pv-hero__proof-label">
-                    {stats.events === 1 ? 'Event' : 'Events'}
-                  </span>
-                </div>
-                <div className="pv-hero__proof-item">
-                  <span className="pv-hero__proof-value">{formatXlm(stats.locked)}</span>
-                  <span className="pv-hero__proof-label">INR in prize pools</span>
-                </div>
-                <div className="pv-hero__proof-item">
-                  <span className="pv-hero__proof-value">{stats.participants}</span>
-                  <span className="pv-hero__proof-label">Registrations</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="pv-hero__globe">
-              <HackathonGlobe hackathons={openEvents} />
             </div>
           </div>
         </section>
 
-        <section className="pv-band pv-band--surface" id="events">
+        <section className="pv-logos" aria-label="Settlement rails">
+          <div className="pv-logos__track">
+            {[...TRUST_MARKS, ...TRUST_MARKS].map((mark, index) => (
+              <span className="pv-logos__item" key={`${mark}-${index}`}>
+                {mark}
+              </span>
+            ))}
+          </div>
+        </section>
+
+        <section className="pv-container" id="how">
+          <div className="pv-tiles">
+            {VALUE_TILES.map((tile) => (
+              <article className={`pv-tile pv-tile--${tile.tone}`} key={tile.title}>
+                <span className="pv-tile__icon" aria-hidden>
+                  <Icon name={tile.icon} size={28} />
+                </span>
+                <h2 className="pv-tile__title">{tile.title}</h2>
+                <p className="pv-tile__text">{tile.text}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="pv-band" id="events">
           <div className="pv-container">
             <div className="pv-section__header">
               <div>
                 <h2 className="pv-section-head__title">Open events</h2>
                 <p className="pv-section__desc">
-                  Hackathons currently accepting registrations or in progress. Events move to Past
-                  once winners are selected.
+                  Hackathons currently accepting registrations or in progress.
                 </p>
               </div>
               <div className="pv-btn-group">
                 <a href="/past-events" className="pv-btn pv-btn--ghost pv-btn--sm">
                   Past events
                 </a>
-                <a href="/holder" className="pv-btn pv-btn--secondary pv-btn--sm">
+                <a href="/holder" className="pv-btn pv-btn--primary pv-btn--sm">
                   Browse all events
                   <Icon name="arrowRight" size={14} />
                 </a>
@@ -316,8 +345,8 @@ function Landing() {
                   </span>
                   <h3 className="pv-empty__title">No open events yet</h3>
                   <p className="pv-empty__text">
-                    When an organizer publishes a hackathon and a sponsor locks its prize pool,
-                    it appears here for participants to register.
+                    When an organizer publishes a hackathon and a sponsor locks its prize pool, it
+                    appears here for participants to register.
                   </p>
                   <a href="/organizer" className="pv-btn pv-btn--primary pv-btn--sm">
                     <Icon name="plus" size={14} />
@@ -326,10 +355,16 @@ function Landing() {
                 </div>
               </div>
             )}
+
+            {openEvents.length > 0 ? (
+              <div className="pv-hero__globe pv-hero__globe--band">
+                <HackathonGlobe hackathons={openEvents} />
+              </div>
+            ) : null}
           </div>
         </section>
 
-        <section className="pv-band" id="how">
+        <section className="pv-band pv-band--surface">
           <div className="pv-container">
             <div className="pv-section-head">
               <h2 className="pv-section-head__title">Why escrow, not trust</h2>
@@ -351,43 +386,6 @@ function Landing() {
           </div>
         </section>
 
-        <section className="pv-band pv-band--surface" aria-label="On-chain settlement">
-          <div className="pv-container pv-rails">
-            <p className="pv-rails__label">On the public ledger</p>
-            <ul className="pv-rails__row">
-              {SETTLEMENT_RAILS.map((rail) => {
-                const body = (
-                  <>
-                    <span className="pv-rails__icon" aria-hidden>
-                      <Icon name={rail.icon} size={16} />
-                    </span>
-                    <span className="pv-rails__copy">
-                      <span className={`pv-rails__name ${rail.mono ? 'pv-rails__name--mono' : ''}`.trim()}>
-                        {rail.label}
-                      </span>
-                      <span className="pv-rails__detail">
-                        {rail.detail}
-                        {rail.href ? <Icon name="external" size={11} /> : null}
-                      </span>
-                    </span>
-                  </>
-                )
-                return (
-                  <li key={rail.label} className="pv-rails__item">
-                    {rail.href ? (
-                      <a href={rail.href} target="_blank" rel="noreferrer" className="pv-rails__link">
-                        {body}
-                      </a>
-                    ) : (
-                      <span className="pv-rails__link pv-rails__link--static">{body}</span>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
-        </section>
-
         <section className="pv-band" id="roles">
           <div className="pv-container">
             <div className="pv-section-head">
@@ -398,7 +396,7 @@ function Landing() {
             </div>
             <div className="pv-roles">
               {ROLES.map((role) => (
-                <div className="pv-role" key={role.title}>
+                <div className={`pv-role pv-role--${role.tone}`} key={role.title}>
                   <h3 className="pv-role__title">{role.title}</h3>
                   <ul className="pv-role__list">
                     {role.points.map((p) => (
@@ -410,7 +408,7 @@ function Landing() {
                       </li>
                     ))}
                   </ul>
-                  <a href={role.href} className="pv-btn pv-btn--secondary pv-btn--block">
+                  <a href={role.href} className="pv-btn pv-btn--primary pv-btn--block">
                     {role.cta}
                   </a>
                 </div>
@@ -437,7 +435,7 @@ function Landing() {
           </div>
 
           <div className="pv-cta">
-            <h2 className="pv-cta__title">Run your next hackathon without the payout argument</h2>
+            <h2 className="pv-cta__title">Run your next hackathon without the payout argument.</h2>
             <p className="pv-cta__text">
               Lock the prize pool once. Let dual approval and agents decide who gets paid.
             </p>
@@ -445,17 +443,21 @@ function Landing() {
               <a href="/organizer" className="pv-btn pv-btn--primary pv-btn--lg">
                 Create an event
               </a>
-              <a href="/holder" className="pv-btn pv-btn--secondary pv-btn--lg">
+              <a href="/holder" className="pv-btn pv-btn--ghost pv-btn--lg">
                 Open participant portal
               </a>
             </div>
+            <p className="pv-cta__proof">
+              {stats.events} {stats.events === 1 ? 'event' : 'events'} · {formatXlm(stats.locked)}{' '}
+              INR locked · vault {INR_VAULT_ID}
+            </p>
           </div>
         </section>
       </main>
 
       <footer className="pv-footer">
         <div className="pv-footer__inner">
-          <span>HackPay · hackathon prize escrow powered by Razorpay INR and agentic dual-control.</span>
+          <span className="pv-brand__word">hackpay</span>
           <ul className="pv-footer__links">
             <li>
               <a href="/holder">Participant portal</a>

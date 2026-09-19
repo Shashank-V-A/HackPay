@@ -1,65 +1,64 @@
 /* ==========================================================================
-   Landing header — pill nav (globe / wallet-gate palette)
-   Scoped to .pv-topbar--lamp so organizer / sponsor / wallet headers stay as-is.
+   Landing header — Splash-style white bar, text nav, purple CTA
+   Scoped to .pv-topbar--lamp so organizer / sponsor headers stay as-is.
    ========================================================================== */
 
 .pv-topbar--lamp {
-  --lamp-green: #2f9e4f;
-  --lamp-green-hot: #4ec76a;
-  --lamp-night: #06101f;
-  --lamp-pill: #071526;
-  --lamp-ocean: rgba(64, 140, 255, 0.38);
-  --lamp-ink: #e8f1ff;
-  --lamp-muted: rgba(186, 214, 255, 0.62);
-  background: var(--lamp-night);
-  border-bottom: 1px solid var(--lamp-ocean);
-  overflow: visible;
+  background: #fff;
+  border-bottom: 1px solid #1c1917;
 }
 
 .pv-topbar--lamp .pv-topbar__inner {
-  height: 68px;
-  overflow: visible;
+  height: 72px;
 }
 
 .pv-topbar--lamp .pv-topbar__nav {
-  justify-content: center;
+  justify-content: flex-end;
 }
 
 .pv-topbar--lamp .pv-brand {
-  color: var(--lamp-ink);
-  font-family: var(--pv-font-sans);
+  align-items: baseline;
+  gap: 8px;
+  color: var(--pv-text);
 }
 
 .pv-topbar--lamp .pv-brand:hover {
-  color: var(--lamp-ink);
+  color: var(--pv-text);
+  text-decoration: none;
 }
 
 .pv-topbar--lamp .pv-brand__mark {
-  background: var(--lamp-green);
+  background: var(--pv-accent-fill);
   color: #fff;
-  box-shadow: 0 0 16px rgba(47, 158, 79, 0.45);
+  box-shadow: none;
 }
 
 .pv-topbar--lamp .pv-btn--primary {
-  background: var(--lamp-green);
-  color: #04130a;
-  box-shadow: 0 0 16px rgba(47, 158, 79, 0.28);
+  background: var(--pv-accent-fill);
+  color: #fff;
+  border-radius: 10px;
+  box-shadow: none;
+  padding-inline: 16px;
 }
 
 .pv-topbar--lamp .pv-btn--primary:hover:not(:disabled):not([aria-disabled='true']) {
-  background: var(--lamp-green-hot);
+  background: var(--pv-accent-fill-hover);
+}
+
+.pv-topbar--lamp .pv-btn--ghost {
+  color: var(--pv-text);
+  font-weight: 600;
 }
 
 .pv-topbar--lamp .pv-navtoggle {
-  border-color: var(--lamp-ocean);
-  background: rgba(7, 21, 38, 0.72);
-  color: var(--lamp-ink);
+  border: 0;
+  background: var(--pv-lilac);
+  color: var(--pv-text);
 }
 
 .pv-topbar--lamp .pv-navtoggle:hover {
-  border-color: var(--lamp-green);
-  color: var(--lamp-green-hot);
-  background: rgba(47, 158, 79, 0.12);
+  background: #dcc4f0;
+  color: var(--pv-text);
 }
 
 .pv-lamp-wrap {
@@ -69,6 +68,7 @@
   width: max-content;
   max-width: 100%;
   min-width: 0;
+  margin-left: auto;
 }
 
 .pv-lamp-nav {
@@ -77,12 +77,12 @@
   align-items: stretch;
   gap: var(--pv-space-1);
   min-width: 0;
-  padding: var(--pv-space-2) var(--pv-space-3);
-  border: 1px solid rgba(64, 140, 255, 0.28);
-  border-radius: 999px;
-  background: var(--lamp-pill);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   font-family: var(--pv-font-sans);
-  box-shadow: 0 8px 24px rgba(0, 8, 24, 0.4);
+  box-shadow: none;
 }
 
 .pv-lamp-nav .pv-nav-menu {
@@ -96,7 +96,7 @@
 .pv-lamp-nav .pv-nav-menu__list {
   display: flex;
   align-items: stretch;
-  gap: var(--pv-space-2);
+  gap: 2px;
   width: auto;
 }
 
@@ -119,22 +119,22 @@
 .pv-lamp-nav button.pv-lamp-nav__item {
   display: flex;
   flex: none;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: var(--pv-space-2);
+  gap: 4px;
   width: auto;
   min-width: 0;
   height: auto;
-  padding: var(--pv-space-3) var(--pv-space-5);
+  padding: 8px 14px;
   border: 0;
-  border-radius: var(--pv-radius-md);
+  border-radius: 8px;
   background: transparent;
-  color: #fff;
+  color: var(--pv-text);
   font-family: var(--pv-font-sans);
-  font-size: var(--pv-text-sm);
-  font-weight: var(--pv-weight-medium);
-  letter-spacing: var(--pv-tracking-normal);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   line-height: 1.2;
   box-shadow: none;
   white-space: nowrap;
@@ -144,27 +144,12 @@
 }
 
 .pv-lamp-nav button.pv-lamp-nav__item.pv-nav-menu__trigger {
-  display: grid;
-  grid-template-columns: auto auto;
-  grid-template-rows: auto auto;
-  justify-content: center;
-  justify-items: center;
-  column-gap: 2px;
-  row-gap: var(--pv-space-2);
-}
-
-.pv-lamp-nav button.pv-lamp-nav__item .pv-lamp-nav__glyph {
-  grid-column: 1 / -1;
-}
-
-.pv-lamp-nav button.pv-lamp-nav__item .pv-lamp-nav__caption {
-  grid-column: 1;
+  display: inline-flex;
+  grid-template-columns: none;
 }
 
 .pv-lamp-nav button.pv-lamp-nav__item .pv-nav-menu__chevron {
-  grid-column: 2;
-  align-self: center;
-  color: var(--lamp-green-hot);
+  color: var(--pv-text-muted);
 }
 
 .pv-lamp-nav button.pv-lamp-nav__item .pv-nav-menu__chevron svg {
@@ -175,76 +160,56 @@
 
 .pv-lamp-nav .pv-lamp-nav__item:hover,
 .pv-lamp-nav .pv-lamp-nav__item[data-popup-open] {
-  background: rgba(232, 241, 255, 0.08);
-  color: #fff;
+  background: var(--pv-surface-2);
+  color: var(--pv-text);
   text-decoration: none;
 }
 
 .pv-lamp-nav .pv-lamp-nav__item.is-active {
   background: transparent;
-  color: #fff;
+  color: var(--pv-text);
   text-decoration: none;
 }
 
 .pv-lamp-nav .pv-lamp-nav__item:focus-visible {
-  outline: 2px solid var(--lamp-green-hot);
-  outline-offset: -4px;
-  border-radius: var(--pv-radius-md);
+  outline: 2px solid var(--pv-accent-fill);
+  outline-offset: 2px;
+  border-radius: 8px;
 }
 
 .pv-lamp-nav__glyph {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--lamp-green-hot);
-}
-
-.pv-lamp-nav__glyph svg {
-  width: 18px;
-  height: 18px;
-  max-width: none;
+  display: none;
 }
 
 .pv-lamp-nav__caption {
   min-width: 0;
-  color: #fff;
+  color: inherit;
   font-family: var(--pv-font-sans);
   white-space: nowrap;
 }
 
-.pv-lamp-nav__tools a.pv-lamp-nav__item {
-  padding-inline: var(--pv-space-6);
-}
-
 .pv-lamp-nav .pv-nav-menu__popup {
-  border-color: var(--lamp-ocean);
-  background: #0a1628;
-  color: var(--lamp-ink);
-  box-shadow: 0 16px 40px rgba(0, 8, 24, 0.55);
+  border-color: var(--pv-border);
+  background: #fff;
+  color: var(--pv-text);
+  box-shadow: var(--pv-shadow-lg);
 }
 
 .pv-lamp-nav .pv-nav-menu__arrow::before {
-  border-color: var(--lamp-ocean);
-  background: #0a1628;
+  border-color: var(--pv-border);
+  background: #fff;
 }
 
 .pv-lamp-nav .pv-nav-menu__card:hover {
-  background: rgba(47, 158, 79, 0.12);
+  background: var(--pv-accent-soft);
 }
 
 .pv-lamp-nav .pv-nav-menu__card-title {
-  color: var(--lamp-ink);
+  color: var(--pv-text);
 }
 
 .pv-lamp-nav .pv-nav-menu__card-desc {
-  color: var(--lamp-muted);
-}
-
-@media (max-width: 1100px) {
-  .pv-lamp-nav .pv-lamp-nav__item.pv-nav-menu__trigger,
-  .pv-lamp-nav a.pv-lamp-nav__item {
-    padding-inline: var(--pv-space-4);
-  }
+  color: var(--pv-text-secondary);
 }
 
 @media (max-width: 768px) {
@@ -252,14 +217,15 @@
     height: var(--pv-header-h);
   }
 
+
   .pv-topbar--lamp .pv-topbar__nav.is-open .pv-lamp-wrap {
     width: 100%;
     max-width: none;
   }
 
   .pv-topbar--lamp .pv-topbar__nav.is-open {
-    background: var(--lamp-night);
-    border-bottom-color: var(--lamp-ocean);
+    background: #fff;
+    border-bottom-color: #1c1917;
   }
 
   .pv-topbar--lamp .pv-topbar__nav.is-open .pv-lamp-nav {
@@ -286,24 +252,21 @@
     gap: var(--pv-space-1);
   }
 
+  .pv-topbar--lamp .pv-topbar__nav.is-open .pv-lamp-nav__glyph {
+    display: flex;
+  }
+
   .pv-topbar--lamp .pv-topbar__nav.is-open .pv-lamp-nav__item.pv-nav-menu__trigger,
   .pv-topbar--lamp .pv-topbar__nav.is-open a.pv-lamp-nav__item,
   .pv-topbar--lamp .pv-topbar__nav.is-open button.pv-lamp-nav__item.pv-nav-menu__trigger {
     display: flex;
     flex-direction: row;
-    grid-template-columns: none;
     justify-content: flex-start;
     align-items: center;
     gap: var(--pv-space-4);
     padding: var(--pv-space-4) var(--pv-space-5);
     border-radius: var(--pv-radius-md);
     font-size: var(--pv-text-md);
-  }
-
-  .pv-topbar--lamp .pv-topbar__nav.is-open button.pv-lamp-nav__item .pv-lamp-nav__glyph,
-  .pv-topbar--lamp .pv-topbar__nav.is-open button.pv-lamp-nav__item .pv-lamp-nav__caption,
-  .pv-topbar--lamp .pv-topbar__nav.is-open button.pv-lamp-nav__item .pv-nav-menu__chevron {
-    grid-column: auto;
   }
 
   .pv-topbar--lamp .pv-topbar__nav.is-open button.pv-lamp-nav__item.pv-nav-menu__trigger {
@@ -314,4 +277,3 @@
     margin-right: auto;
   }
 }
-

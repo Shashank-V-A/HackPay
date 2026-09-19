@@ -87,10 +87,19 @@ export default function SharedHeader({
     <header className={activeTab === 'landing' ? 'pv-topbar pv-topbar--lamp' : 'pv-topbar'}>
       <div className="pv-topbar__inner">
         <a href="/" className="pv-brand">
-          <span className="pv-brand__mark" aria-hidden>
-            <Icon name="lock" size={14} />
-          </span>
-          <span>HackPay</span>
+          {activeTab === 'landing' ? (
+            <>
+              <span className="pv-brand__word">hackpay</span>
+              <span className="pv-brand__by">prize escrow</span>
+            </>
+          ) : (
+            <>
+              <span className="pv-brand__mark" aria-hidden>
+                <Icon name="lock" size={14} />
+              </span>
+              <span>HackPay</span>
+            </>
+          )}
           {subtitle ? <span className="pv-brand__sub">{subtitle}</span> : null}
         </a>
 
@@ -104,29 +113,23 @@ export default function SharedHeader({
         >
           {activeTab === 'landing' ? (
             <LandingNavigationMenu
-              renderTools={({ active, setActive }) =>
-                session ? (
-                  <a
-                    href={
-                      ALL_TABS.find((tab) => tab.id === ROLE_TAB[session.role])?.href ?? '/holder'
-                    }
-                    className={itemClass(active === 4)}
-                    title={session.wallet}
-                    onMouseEnter={() => setActive(4)}
-                    onFocus={() => setActive(4)}
-                  >
-                    <NavGlyph icon="wallet" label={ROLE_LABEL[session.role] || 'Wallet'} />
-                  </a>
-                ) : (
-                  <a
-                    href="/holder"
-                    className={itemClass(active === 4)}
-                    onMouseEnter={() => setActive(4)}
-                    onFocus={() => setActive(4)}
-                  >
-                    <NavGlyph icon="wallet" label="Connect wallet" />
-                  </a>
-                )
+              renderTools={
+                session
+                  ? ({ active, setActive }) => (
+                      <a
+                        href={
+                          ALL_TABS.find((tab) => tab.id === ROLE_TAB[session.role])?.href ??
+                          '/holder'
+                        }
+                        className={itemClass(active === 4)}
+                        title={session.wallet}
+                        onMouseEnter={() => setActive(4)}
+                        onFocus={() => setActive(4)}
+                      >
+                        <NavGlyph icon="wallet" label={ROLE_LABEL[session.role] || 'Wallet'} />
+                      </a>
+                    )
+                  : undefined
               }
             />
           ) : (
@@ -151,48 +154,53 @@ export default function SharedHeader({
         </nav>
 
         <div className="pv-topbar__actions">
-          {activeTab !== 'landing' ? (
-            <>
-              {session ? (
-                <>
-                  <span className="pv-session" title={session.wallet}>
-                    <span className="pv-avatar pv-avatar--sm" aria-hidden>
-                      {(ROLE_LABEL[session.role] || '?').charAt(0)}
-                    </span>
-                    <span className="pv-session__text">
-                      <span className="pv-session__role">
-                        {ROLE_LABEL[session.role] || session.role}
-                      </span>
-                      <span className="pv-session__addr">{truncateAddress(session.wallet, 4, 4)}</span>
-                    </span>
-                  </span>
-                  <button
-                    type="button"
-                    className="pv-btn pv-btn--ghost pv-btn--sm pv-btn--icon"
-                    onClick={handleDisconnect}
-                    aria-label="Disconnect wallet"
-                    title="Disconnect wallet"
-                  >
-                    <Icon name="logout" />
-                  </button>
-                </>
-              ) : (
-                <a href="/holder" className="pv-btn pv-btn--primary pv-btn--sm">
-                  Connect wallet
+          {activeTab === 'landing' ? (
+            session ? (
+              <button
+                type="button"
+                className="pv-btn pv-btn--ghost pv-btn--sm"
+                onClick={handleDisconnect}
+              >
+                Sign out
+              </button>
+            ) : (
+              <>
+                <a href="/holder" className="pv-btn pv-btn--ghost pv-btn--sm pv-topbar__signin">
+                  Sign in
                 </a>
-              )}
-            </>
+                <a href="/holder" className="pv-btn pv-btn--primary pv-btn--sm">
+                  Get started
+                </a>
+              </>
+            )
           ) : session ? (
-            <button
-              type="button"
-              className="pv-btn pv-btn--ghost pv-btn--sm pv-btn--icon"
-              onClick={handleDisconnect}
-              aria-label="Disconnect wallet"
-              title="Disconnect wallet"
-            >
-              <Icon name="logout" />
-            </button>
-          ) : null}
+            <>
+              <span className="pv-session" title={session.wallet}>
+                <span className="pv-avatar pv-avatar--sm" aria-hidden>
+                  {(ROLE_LABEL[session.role] || '?').charAt(0)}
+                </span>
+                <span className="pv-session__text">
+                  <span className="pv-session__role">
+                    {ROLE_LABEL[session.role] || session.role}
+                  </span>
+                  <span className="pv-session__addr">{truncateAddress(session.wallet, 4, 4)}</span>
+                </span>
+              </span>
+              <button
+                type="button"
+                className="pv-btn pv-btn--ghost pv-btn--sm pv-btn--icon"
+                onClick={handleDisconnect}
+                aria-label="Disconnect wallet"
+                title="Disconnect wallet"
+              >
+                <Icon name="logout" />
+              </button>
+            </>
+          ) : (
+            <a href="/holder" className="pv-btn pv-btn--primary pv-btn--sm">
+              Sign in
+            </a>
+          )}
 
           <button
             type="button"

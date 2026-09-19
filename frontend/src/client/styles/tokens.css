@@ -12,35 +12,39 @@
   color-scheme: light;
 
   /* ---- Surfaces ---------------------------------------------------------- */
-  --pv-bg: #f7f8fa;
+  --pv-bg: #ffffff;
   --pv-bg-elevated: #ffffff;
   --pv-surface: #ffffff;
-  --pv-surface-2: #f4f5f7;
-  --pv-surface-3: #eceef1;
-  --pv-surface-inset: #fafbfc;
-  --pv-overlay: rgba(16, 20, 28, 0.48);
+  --pv-surface-2: #f7f5f8;
+  --pv-surface-3: #efeaf4;
+  --pv-surface-inset: #fcfbfd;
+  --pv-overlay: rgba(28, 18, 36, 0.48);
+
+  /* Splash-inspired pastels */
+  --pv-blush: #f8e6e4;
+  --pv-gold: #d4bc3c;
+  --pv-lilac: #e6d4f5;
 
   /* ---- Borders ----------------------------------------------------------- */
-  --pv-border: #e3e5e9;
-  --pv-border-subtle: #eef0f3;
-  --pv-border-strong: #cfd3da;
+  --pv-border: #ece7ef;
+  --pv-border-subtle: #f4f0f6;
+  --pv-border-strong: #d9d0e0;
 
   /* ---- Text -------------------------------------------------------------- */
-  --pv-text: #14161a;
-  --pv-text-secondary: #565d69;
-  --pv-text-muted: #838a96;
+  --pv-text: #1c1917;
+  --pv-text-secondary: #5c5660;
+  --pv-text-muted: #8a8490;
   --pv-text-inverse: #ffffff;
 
-  /* ---- Accent ------------------------------------------------------------ */
-  /* -fill takes white text (4.63:1). -text is for accent-coloured type on --pv-bg. */
-  --pv-accent-fill: #1f6feb;
-  --pv-accent-fill-hover: #1a5fd0;
-  --pv-accent-fill-active: #164fae;
-  --pv-accent-text: #1257c9;
-  --pv-accent-soft: #eaf2fe;
-  --pv-accent-soft-hover: #dbe9fd;
-  --pv-accent-border: #b9d3fb;
-  --pv-accent-ring: rgba(31, 111, 235, 0.35);
+  /* ---- Accent (Splash-like purple) -------------------------------------- */
+  --pv-accent-fill: #6b3fa0;
+  --pv-accent-fill-hover: #5c348a;
+  --pv-accent-fill-active: #4d2c74;
+  --pv-accent-text: #5a2f8a;
+  --pv-accent-soft: #f3eafb;
+  --pv-accent-soft-hover: #eadcf7;
+  --pv-accent-border: #d4b8ec;
+  --pv-accent-ring: rgba(107, 63, 160, 0.35);
 
   /* ---- Semantic ---------------------------------------------------------- */
   --pv-success-fill: #15803d;
@@ -64,8 +68,8 @@
   --pv-neutral-text: #565d69;
 
   /* ---- Typography -------------------------------------------------------- */
-  --pv-font-sans: var(--font-plus-jakarta), 'Plus Jakarta Sans', -apple-system,
-    BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --pv-font-sans: var(--font-outfit), 'Outfit', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', sans-serif;
   --pv-font-mono: var(--font-jetbrains), 'JetBrains Mono', ui-monospace,
     SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
 
@@ -78,10 +82,10 @@
   --pv-text-2xl: 1.375rem;  /* 22 */
   --pv-text-3xl: 1.75rem;   /* 28 */
   --pv-text-4xl: 2.25rem;   /* 36 */
-  --pv-text-display: clamp(2.25rem, 1.25rem + 3.6vw, 3.75rem);
-  --pv-text-display-sm: clamp(1.75rem, 1.1rem + 2.2vw, 2.75rem);
+  --pv-text-display: clamp(2.75rem, 1.4rem + 5.4vw, 4.75rem);
+  --pv-text-display-sm: clamp(1.85rem, 1.1rem + 2.6vw, 3rem);
 
-  --pv-leading-tight: 1.15;
+  --pv-leading-tight: 1.08;
   --pv-leading-snug: 1.3;
   --pv-leading-normal: 1.5;
   --pv-leading-relaxed: 1.65;
@@ -90,6 +94,7 @@
   --pv-weight-medium: 500;
   --pv-weight-semibold: 600;
   --pv-weight-bold: 700;
+  --pv-weight-extrabold: 800;
 
   --pv-tracking-tight: -0.018em;
   --pv-tracking-snug: -0.01em;
@@ -117,10 +122,10 @@
   /* ---- Radius ------------------------------------------------------------ */
   --pv-radius-xs: 4px;
   --pv-radius-sm: 6px;
-  --pv-radius-md: 8px;
-  --pv-radius-lg: 12px;
-  --pv-radius-xl: 16px;
-  --pv-radius-2xl: 20px;
+  --pv-radius-md: 10px;
+  --pv-radius-lg: 14px;
+  --pv-radius-xl: 20px;
+  --pv-radius-2xl: 28px;
   --pv-radius-pill: 999px;
 
   /* ---- Shadow ------------------------------------------------------------ */

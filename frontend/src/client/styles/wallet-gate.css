@@ -4,16 +4,16 @@
    ========================================================================== */
 
 .pv-gate {
-  --gate-red: #2f9e4f;
-  --gate-red-hot: #4ec76a;
-  --gate-red-dim: rgba(47, 158, 79, 0.45);
-  --gate-ink: #e8f1ff;
-  --gate-muted: rgba(186, 214, 255, 0.68);
-  --gate-glass: #06101f;
-  --gate-line: rgba(64, 140, 255, 0.38);
-  --gate-ocean: #1a61c7;
-  --gate-night: #06101f;
-  --gate-pill: #071526;
+  --gate-red: #6b3fa0;
+  --gate-red-hot: #8b5cc4;
+  --gate-red-dim: rgba(107, 63, 160, 0.45);
+  --gate-ink: #1c1917;
+  --gate-muted: #5c5660;
+  --gate-glass: #ffffff;
+  --gate-line: rgba(107, 63, 160, 0.28);
+  --gate-ocean: #6b3fa0;
+  --gate-night: #ffffff;
+  --gate-pill: #f3eafb;
 
   position: relative;
   isolation: isolate;

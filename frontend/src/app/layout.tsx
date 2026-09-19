@@ -1,12 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
+import { JetBrains_Mono, Outfit } from "next/font/google";
 import Script from "next/script";
 import "@frontend/styles/index.css";
 
-const plusJakarta = Plus_Jakarta_Sans({
+const outfit = Outfit({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-plus-jakarta",
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-outfit",
   display: "swap",
 });
 
@@ -27,7 +27,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#f7f8fa",
+  themeColor: "#ffffff",
 };
 
 export default function RootLayout({
@@ -40,7 +40,7 @@ export default function RootLayout({
       lang="en"
       data-theme="light"
       style={{ colorScheme: "light" }}
-      className={`${plusJakarta.variable} ${jetbrains.variable}`}
+      className={`${outfit.variable} ${jetbrains.variable}`}
     >
       <head>
         <Script id="pv-global-polyfill" strategy="beforeInteractive">{`

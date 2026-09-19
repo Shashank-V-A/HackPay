@@ -16,7 +16,7 @@
   min-height: var(--_h);
   padding: 0 var(--pv-space-5);
   border: 1px solid transparent;
-  border-radius: var(--pv-radius-md);
+  border-radius: 10px;
   font-size: var(--pv-text-md);
   font-weight: var(--pv-weight-semibold);
   line-height: 1;
