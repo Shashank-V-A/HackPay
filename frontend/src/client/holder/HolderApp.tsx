@@ -156,12 +156,35 @@ export default function HolderApp() {
         return
       }
 
-      await cognitoSignUp({
-        email,
-        password,
-        name: profile.name,
-        role,
-      })
+      try {
+        await cognitoSignUp({
+          email,
+          password,
+          name: profile.name,
+          role,
+        })
+      } catch (signUpErr) {
+        const msg =
+          signUpErr instanceof Error ? signUpErr.message : String(signUpErr || '')
+        // Account already exists — try signing in with the same credentials.
+        if (/already exists/i.test(msg)) {
+          try {
+            const existing = await cognitoSignIn({ email, password, role })
+            handleWalletConnect(
+              existing.email,
+              { ...profile, name: existing.name || profile.name },
+              { idToken: existing.idToken },
+            )
+            return
+          } catch {
+            throw new Error(
+              'An account with this email already exists. Switch to Sign in and use your password (or reset it).',
+            )
+          }
+        }
+        throw signUpErr
+      }
+
       const result = await cognitoSignIn({ email, password, role })
       handleWalletConnect(result.email, profile, { idToken: result.idToken })
     } catch (err) {
