@@ -116,7 +116,10 @@ export function hackathonToRow(
   },
   organizerId?: string | null,
 ): Partial<HackathonRow> {
-  const legacyId = hackathon.id.startsWith('hack_') ? hackathon.id : `hack_${Date.now()}`
+  const legacyId =
+    typeof hackathon.id === 'string' && hackathon.id.startsWith('hack_')
+      ? hackathon.id
+      : `hack_${Date.now()}`
 
   return {
     legacy_id: legacyId,
