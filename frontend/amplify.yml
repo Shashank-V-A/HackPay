@@ -20,6 +20,16 @@ frontend:
             echo "STRANDS_ENABLED=${STRANDS_ENABLED:-true}"
             echo "BEDROCK_MODEL_ID=${BEDROCK_MODEL_ID:-amazon.nova-lite-v1:0}"
             echo "BEDROCK_REGION=${BEDROCK_REGION:-$NEXT_PUBLIC_AWS_REGION}"
+            if [ -n "${RAZORPAY_KEY_ID:-}" ]; then
+              echo "RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID}"
+              echo "NEXT_PUBLIC_RAZORPAY_KEY_ID=${NEXT_PUBLIC_RAZORPAY_KEY_ID:-$RAZORPAY_KEY_ID}"
+            fi
+            if [ -n "${RAZORPAY_KEY_SECRET:-}" ]; then
+              echo "RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET}"
+            fi
+            if [ -n "${RAZORPAYX_ACCOUNT_NUMBER:-}" ]; then
+              echo "RAZORPAYX_ACCOUNT_NUMBER=${RAZORPAYX_ACCOUNT_NUMBER}"
+            fi
           } > .env.production
     build:
       commands:

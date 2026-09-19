@@ -81,6 +81,20 @@ Open http://localhost:3000 → `/holder` → Cognito Create account / Sign in.
 
 Check `GET /api/health` — `aws.cognito`, `aws.dynamodb`, `aws.s3`, `aws.sns` should be `true`. With Strands on, `aws.strands` is `true`.
 
+### Optional: Razorpay (live Checkout)
+
+Without keys, sponsor funding uses **mock orders** (`order_mock_…`) so Ship It demos still work.
+
+To open real Razorpay Checkout, set on the live Amplify app (`d39l7wna3d1uyn`):
+
+- `RAZORPAY_KEY_ID` = `rzp_test_…` (or live `rzp_live_…`)
+- `RAZORPAY_KEY_SECRET` = matching secret
+- Optional: `RAZORPAYX_ACCOUNT_NUMBER` for winner payouts
+
+Then redeploy. `amplify.yml` bakes these into `.env.production` for SSR.
+
+Check `GET /api/health` → `razorpayConfigured: true`.
+
 ### Enable Bedrock (Strands)
 
 1. In Bedrock console (same region as the app), enable model access for `amazon.nova-lite-v1:0` (or your `BEDROCK_MODEL_ID`).

@@ -1,7 +1,29 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import AddressChip from '../../components/AddressChip'
 
 export default function SponsorProfilePanel({ sponsorName, defaultWallet }) {
+  const [networkLabel, setNetworkLabel] = useState('Razorpay INR')
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/health')
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return
+        if (data?.razorpayConfigured) {
+          setNetworkLabel(data.razorpayTestMode ? 'Razorpay INR (test keys)' : 'Razorpay INR (live)')
+        } else {
+          setNetworkLabel('Razorpay INR (demo mock — no keys)')
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setNetworkLabel('Razorpay INR (demo mock)')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   return (
     <section className="pv-card">
       <div className="pv-card__header">
@@ -23,7 +45,7 @@ export default function SponsorProfilePanel({ sponsorName, defaultWallet }) {
         </div>
         <div className="pv-kv-row">
           <span className="pv-kv-row__key">Network</span>
-          <span className="pv-kv-row__val">Razorpay INR (test)</span>
+          <span className="pv-kv-row__val">{networkLabel}</span>
         </div>
       </div>
     </section>
