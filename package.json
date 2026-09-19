@@ -9,18 +9,15 @@
     "build": "npm run --prefix frontend build",
     "build:web": "npm run --prefix frontend build",
     "typecheck": "tsc --noEmit",
-    "migrate:rds": "node scripts/migrate-rds.mjs",
     "infra:install": "npm install --prefix infra",
     "infra:deploy": "npm run --prefix infra deploy",
     "infra:synth": "npm run --prefix infra synth"
   },
   "dependencies": {
-    "dotenv": "^17.4.2",
-    "pg": "^8.23.0"
+    "dotenv": "^17.4.2"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "@types/pg": "^8.23.1",
     "tsx": "^4.19.0",
     "typescript": "^5.0.0"
   }

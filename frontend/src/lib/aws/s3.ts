@@ -81,3 +81,14 @@ export function buildReceiptKey(hackathonId: string, kind: string, id: string): 
   const safe = (s: string) => s.replace(/[^a-zA-Z0-9._-]/g, '_')
   return `receipts/${safe(hackathonId)}/${safe(kind)}/${safe(id)}.json`
 }
+
+/** Deterministic public URL for a receipt key (CloudFront preferred). */
+export function receiptPublicUrl(hackathonId: string, kind: string, id: string): string | null {
+  if (!isS3Configured() && !getCloudFrontUrl()) return null
+  const key = buildReceiptKey(hackathonId, kind, id)
+  const cdn = getCloudFrontUrl()
+  if (cdn) return `${cdn}/${key}`
+  const bucket = getS3Bucket()
+  if (!bucket) return null
+  return `https://${bucket}.s3.${getAwsRegion()}.amazonaws.com/${key}`
+}

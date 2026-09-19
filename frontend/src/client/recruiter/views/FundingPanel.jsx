@@ -14,6 +14,22 @@ export default function FundingPanel({
   fundingError,
 }) {
   const [amount, setAmount] = useState('')
+  const [razorpayLive, setRazorpayLive] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/health')
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled) setRazorpayLive(Boolean(data?.razorpayConfigured))
+      })
+      .catch(() => {
+        if (!cancelled) setRazorpayLive(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (!selectedEscrow) {
@@ -120,10 +136,24 @@ export default function FundingPanel({
         </div>
 
         <p className="pv-muted" style={{ marginBottom: 'var(--pv-space-7)', fontSize: 'var(--pv-text-sm)' }}>
-          You pay the prize pool here with Razorpay Checkout. Winners later receive INR to UPI or
-          bank — they never open Checkout.
+          {razorpayLive
+            ? 'You pay the prize pool here with Razorpay Checkout. Winners later receive INR to UPI or bank — they never open Checkout.'
+            : 'Demo mode: escrow funding is recorded without Razorpay keys (mock order). Add RAZORPAY_KEY_ID + RAZORPAY_KEY_SECRET in Amplify to open real Checkout.'}
         </p>
-
+        {razorpayLive === false ? (
+          <div className="pv-alert" role="status" style={{ marginBottom: 'var(--pv-space-7)' }}>
+            <span className="pv-alert__icon">
+              <Icon name="alert" size={16} />
+            </span>
+            <div className="pv-alert__content">
+              <p className="pv-alert__title">Razorpay keys not configured</p>
+              <p className="pv-alert__text">
+                Funding still works for Ship It demos via mock attribution. Live Checkout needs test
+                keys from dashboard.razorpay.com.
+              </p>
+            </div>
+          </div>
+        ) : null}
         <dl className="pv-dl" style={{ marginBottom: 'var(--pv-space-7)' }}>
           <div className="pv-dl__item">
             <dt className="pv-dl__key">Destination (INR vault)</dt>

@@ -45,3 +45,32 @@ export async function markAgentNotificationRead(wallet: string, id: string): Pro
     body: JSON.stringify({ wallet, id }),
   })
 }
+
+/** On-demand Strands/Bedrock winner shortlist + timeline (advisory only). */
+export async function fetchAgentAdvice(hackathonId: string) {
+  try {
+    const res = await fetch('/api/agent/advise', {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ hackathonId }),
+    })
+    return (await res.json()) as {
+      ok: boolean
+      provider?: string
+      timelineSummary?: string
+      nextSteps?: string[]
+      suggestions?: Array<{
+        participantId: string
+        name: string
+        rank: number
+        score: number
+        rationale: string
+        repoUrl?: string
+        risks?: string[]
+      }>
+      error?: string
+    }
+  } catch {
+    return null
+  }
+}

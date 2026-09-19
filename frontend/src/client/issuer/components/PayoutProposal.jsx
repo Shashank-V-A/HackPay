@@ -7,7 +7,7 @@ import { hackathonBelongsToOrganizerPortal } from '../../utils/organizerPortalFi
 import { appendIssuerAuditLog } from '../../utils/issuerAuditLog'
 import { useHackathons, usePayoutProposals } from '../../hooks/useHackathons'
 import { useEscrow } from '../../hooks/useEscrow'
-import { formatDate, formatXlm, isEscrowFullyFunded, payoutStatusCopy, stellarTxUrl } from '../../utils/format'
+import { formatDate, formatXlm, isEscrowFullyFunded, payoutStatusCopy, payoutReceiptUrl } from '../../utils/format'
 import {
   canProposePayout,
   fundingGapXlm,
@@ -455,15 +455,23 @@ export default function PayoutProposal({ hackathonId, sessionWallet, onExecute }
                       <span className="pv-muted">
                         {payoutStatusCopy(p.txHash)} Released {p.executedAt ? formatDate(p.executedAt) : ''}
                       </span>
-                      <a
-                        href={p.txHash ? stellarTxUrl(p.txHash) : '#'}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="pv-btn pv-btn--secondary pv-btn--sm"
-                      >
-                        View payout receipt
-                        <Icon name="external" size={13} />
-                      </a>
+                      {(() => {
+                        const event = myHackathons.find((h) => h.id === p.hackathonId)
+                        const auditUrl = event?.agent?.lastReceiptUrl
+                        const href = auditUrl || (p.txHash ? payoutReceiptUrl(p.txHash) : '#')
+                        const isAudit = Boolean(auditUrl)
+                        return (
+                          <a
+                            href={href}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="pv-btn pv-btn--secondary pv-btn--sm"
+                          >
+                            {isAudit ? 'Open CloudFront audit' : 'View payout receipt'}
+                            <Icon name="external" size={13} />
+                          </a>
+                        )
+                      })()}
                     </>
                   ) : bothApproved ? (
                     <>

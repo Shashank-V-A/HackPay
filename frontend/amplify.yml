@@ -6,9 +6,9 @@ frontend:
         - npm ci
         - |
           set -e
-          : "${DATABASE_URL:?DATABASE_URL must be set in Amplify env vars}"
+          : "${DYNAMODB_TABLE_NAME:?DYNAMODB_TABLE_NAME must be set in Amplify env vars}"
           {
-            echo "DATABASE_URL=${DATABASE_URL}"
+            echo "DYNAMODB_TABLE_NAME=${DYNAMODB_TABLE_NAME}"
             echo "SNS_TOPIC_ARN=${SNS_TOPIC_ARN}"
             echo "AGENT_CRON_SECRET=${AGENT_CRON_SECRET}"
             echo "NEXT_PUBLIC_AWS_REGION=${NEXT_PUBLIC_AWS_REGION}"
@@ -17,6 +17,19 @@ frontend:
             echo "NEXT_PUBLIC_S3_BUCKET=${NEXT_PUBLIC_S3_BUCKET}"
             echo "NEXT_PUBLIC_CLOUDFRONT_URL=${NEXT_PUBLIC_CLOUDFRONT_URL}"
             echo "NEXT_PUBLIC_SNS_TOPIC_ARN=${NEXT_PUBLIC_SNS_TOPIC_ARN:-$SNS_TOPIC_ARN}"
+            echo "STRANDS_ENABLED=${STRANDS_ENABLED:-true}"
+            echo "BEDROCK_MODEL_ID=${BEDROCK_MODEL_ID:-amazon.nova-lite-v1:0}"
+            echo "BEDROCK_REGION=${BEDROCK_REGION:-$NEXT_PUBLIC_AWS_REGION}"
+            if [ -n "${RAZORPAY_KEY_ID:-}" ]; then
+              echo "RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID}"
+              echo "NEXT_PUBLIC_RAZORPAY_KEY_ID=${NEXT_PUBLIC_RAZORPAY_KEY_ID:-$RAZORPAY_KEY_ID}"
+            fi
+            if [ -n "${RAZORPAY_KEY_SECRET:-}" ]; then
+              echo "RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET}"
+            fi
+            if [ -n "${RAZORPAYX_ACCOUNT_NUMBER:-}" ]; then
+              echo "RAZORPAYX_ACCOUNT_NUMBER=${RAZORPAYX_ACCOUNT_NUMBER}"
+            fi
           } > .env.production
     build:
       commands:

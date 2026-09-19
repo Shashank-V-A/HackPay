@@ -61,6 +61,17 @@ export type AgentNotification = {
   readAt?: string | null
 }
 
+/** Strands/Bedrock advisory shortlist — organizer must still confirm winners. */
+export type AgentWinnerSuggestion = {
+  participantId: string
+  name: string
+  rank: number
+  score: number
+  rationale: string
+  repoUrl?: string
+  risks?: string[]
+}
+
 export type HackathonAgentState = {
   notified?: Partial<Record<AgentStage, string>>
   inbox?: AgentNotification[]
@@ -68,8 +79,17 @@ export type HackathonAgentState = {
   log?: AgentLogEntry[]
   gates?: GateResult[]
   lastReceipt?: string
+  /** CloudFront (or S3) URL for the last audit JSON receipt */
+  lastReceiptUrl?: string
   summary?: string
   compliance?: Record<string, unknown>
+  /** Bedrock/Strands timeline narrative */
+  timelineSummary?: string
+  nextSteps?: string[]
+  /** Ranked advisory shortlist from Strands repo analysis */
+  suggestions?: AgentWinnerSuggestion[]
+  adviceAt?: string
+  adviceProvider?: 'strands-bedrock' | 'none'
 }
 
 export type AgentTickResult = {

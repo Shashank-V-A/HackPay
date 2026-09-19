@@ -111,18 +111,35 @@ export async function evaluateGit(winners: WinnerLike[]): Promise<GateResult> {
   }
 
   const avg = Math.round(score / repos.length)
+
+  let strandsNote = ''
+  try {
+    const { strandsEnrichGitReview, isStrandsEnabled } = await import('@/lib/agent/strands')
+    if (isStrandsEnabled()) {
+      const enrich = await strandsEnrichGitReview(
+        repos.map((r) => `${r.owner}/${r.repo}`),
+      )
+      if (enrich?.narrative) {
+        strandsNote = ` Strands: ${enrich.narrative}`
+        if (enrich.flags?.length) strandsNote += ` Flags: ${enrich.flags.join('; ')}.`
+      }
+    }
+  } catch {
+    // Advisory only — never fail the gate on Bedrock errors
+  }
+
   if (avg < 40) {
     return {
       ok: false,
       code: 'GIT_BLOCK',
-      detail: `Git scorecard too low (${avg}/100). ${notes.join('; ')}`,
+      detail: `Git scorecard too low (${avg}/100). ${notes.join('; ')}.${strandsNote}`,
       score: avg,
     }
   }
   return {
     ok: true,
     code: 'GIT_OK',
-    detail: `Git scorecard ${avg}/100. ${notes.join('; ')}`,
+    detail: `Git scorecard ${avg}/100. ${notes.join('; ')}.${strandsNote}`,
     score: avg,
   }
 }

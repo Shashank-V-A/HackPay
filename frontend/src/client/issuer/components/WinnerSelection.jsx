@@ -2,11 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react'
 import Icon from '../../components/Icon'
 import { hackathonBelongsToOrganizerPortal } from '../../utils/organizerPortalFilter'
 import { updateHackathon } from '../../services/hackathonApi'
+import { fetchAgentAdvice } from '../../services/agentApi'
 import { useHackathons } from '../../hooks/useHackathons'
 import { appendIssuerAuditLog } from '../../utils/issuerAuditLog'
 import { celebrateWinnersNow } from '../../hooks/useWinnerCelebration'
 import { formatXlm, isEscrowFullyFunded, prizeCurrency, prizeTotal } from '../../utils/format'
 import { canSelectWinners, fundingGapXlm } from '../../utils/payoutWorkflow'
+import { isValidPayoutDestination } from '../../constants/escrow'
+import { authHeaders } from '../../utils/authSession'
 
 const PRIZE_TIERS = [
   { value: '1st', label: '1st place' },
@@ -15,7 +18,21 @@ const PRIZE_TIERS = [
   { value: 'special', label: 'Special prize' },
 ]
 
-import { isValidPayoutDestination } from '../../constants/escrow'
+const TIER_BY_RANK = ['1st', '2nd', '3rd']
+const SPLIT_BY_COUNT = {
+  1: [1],
+  2: [0.6, 0.4],
+  3: [0.5, 0.3, 0.2],
+}
+
+function amountsForShortlist(count, pool) {
+  if (!(pool > 0) || count <= 0) return Array.from({ length: count }, () => '')
+  const ratios = SPLIT_BY_COUNT[count] || Array.from({ length: count }, () => 1 / count)
+  const raw = ratios.map((r) => Math.round(pool * r * 100) / 100)
+  const drift = Math.round((pool - raw.reduce((s, n) => s + n, 0)) * 100) / 100
+  if (raw.length) raw[0] = Math.round((raw[0] + drift) * 100) / 100
+  return raw.map(String)
+}
 
 export default function WinnerSelection({ hackathonId, sessionWallet, onSave }) {
   const { hackathons, reload } = useHackathons()
@@ -47,6 +64,9 @@ export default function WinnerSelection({ hackathonId, sessionWallet, onSave }) 
   const [winners, setWinners] = useState({})
   const [saved, setSaved] = useState(false)
   const [touched, setTouched] = useState(false)
+  const [adviceBusy, setAdviceBusy] = useState(false)
+  const [adviceError, setAdviceError] = useState('')
+  const [advice, setAdvice] = useState(null)
 
   // Re-seed from whatever is already stored when the event changes.
   useEffect(() => {
@@ -63,7 +83,61 @@ export default function WinnerSelection({ hackathonId, sessionWallet, onSave }) 
     setWinners(seeded)
     setSaved(false)
     setTouched(false)
+    setAdviceError('')
+    const cached = hackathon?.agent
+    if (cached?.suggestions?.length) {
+      setAdvice({
+        ok: true,
+        provider: cached.adviceProvider || 'strands-bedrock',
+        timelineSummary: cached.timelineSummary,
+        nextSteps: cached.nextSteps,
+        suggestions: cached.suggestions,
+      })
+    } else {
+      setAdvice(null)
+    }
   }, [hackathon?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadAdvice = async () => {
+    if (!hackathon?.id || adviceBusy) return
+    setAdviceBusy(true)
+    setAdviceError('')
+    try {
+      const result = await fetchAgentAdvice(hackathon.id)
+      if (!result?.ok) {
+        setAdviceError(result?.error || 'Could not load AI shortlist.')
+        return
+      }
+      setAdvice(result)
+    } catch (_) {
+      setAdviceError('Could not load AI shortlist.')
+    } finally {
+      setAdviceBusy(false)
+    }
+  }
+
+  const applyShortlist = () => {
+    if (!advice?.suggestions?.length || !maySelectWinners) return
+    const ranked = [...advice.suggestions].sort((a, b) => (a.rank || 99) - (b.rank || 99))
+    const amounts = amountsForShortlist(ranked.length, pool)
+    const next = {}
+    ranked.forEach((s, index) => {
+      const participant = participants.find((p) => p.id === s.participantId)
+      if (!participant) return
+      next[participant.id] = {
+        prizeTier: TIER_BY_RANK[index] || 'special',
+        payoutAddress: participant.payoutAddress || '',
+        prizeAmount: amounts[index] ?? '',
+      }
+    })
+    if (!Object.keys(next).length) {
+      setAdviceError('Shortlist participants are no longer on this event.')
+      return
+    }
+    setTouched(true)
+    setSaved(false)
+    setWinners(next)
+  }
 
   const toggleWinner = (id, checked) => {
     setTouched(true)
@@ -148,6 +222,21 @@ export default function WinnerSelection({ hackathonId, sessionWallet, onSave }) 
 
       if (!result.success) return
 
+      void fetch('/api/notify/winners', {
+        method: 'POST',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({
+          hackathonId: hackathon.id,
+          hackathonName: hackathon.name,
+          currency,
+          winners: winnerList.map((w) => ({
+            name: w.name,
+            prizeTier: w.prizeTier,
+            prizeAmount: w.prizeAmount,
+          })),
+        }),
+      }).catch(() => {})
+
       appendIssuerAuditLog({
         action: 'select_winners',
         hackathonId: hackathon.id,
@@ -191,6 +280,82 @@ export default function WinnerSelection({ hackathonId, sessionWallet, onSave }) 
               select winners. Currently funded: {formatXlm(pool - fundingGap)} {currency}
               {fundingGap > 0 ? ` (${formatXlm(fundingGap)} ${currency} short)` : ''}.
             </p>
+          </div>
+        </div>
+      ) : null}
+
+      {hackathon && participants.length > 0 ? (
+        <div className="pv-card">
+          <div className="pv-card__header">
+            <div>
+              <h3 className="pv-card__title">AI shortlist</h3>
+              <p className="pv-card__subtitle">
+                Strands/Bedrock advice only — review scores, then preselect or edit by hand. Saving
+                winners still requires your confirmation.
+              </p>
+            </div>
+            <div className="pv-card__actions pv-btn-group">
+              <button
+                type="button"
+                className="pv-btn pv-btn--secondary pv-btn--sm"
+                onClick={() => void loadAdvice()}
+                disabled={adviceBusy}
+              >
+                {adviceBusy ? <span className="pv-btn__spinner" /> : <Icon name="refresh" size={14} />}
+                {advice?.suggestions?.length ? 'Refresh advice' : 'Get AI shortlist'}
+              </button>
+              {advice?.suggestions?.length ? (
+                <button
+                  type="button"
+                  className="pv-btn pv-btn--primary pv-btn--sm"
+                  onClick={applyShortlist}
+                  disabled={!maySelectWinners}
+                >
+                  <Icon name="check" size={14} />
+                  Preselect shortlist
+                </button>
+              ) : null}
+            </div>
+          </div>
+          <div className="pv-card__body">
+            {adviceError ? (
+              <div className="pv-alert pv-alert--warning" style={{ marginBottom: 'var(--pv-space-5)' }}>
+                <span className="pv-alert__icon">
+                  <Icon name="alert" size={16} />
+                </span>
+                <div className="pv-alert__content">
+                  <p className="pv-alert__text">{adviceError}</p>
+                </div>
+              </div>
+            ) : null}
+            {advice?.timelineSummary ? (
+              <p className="pv-muted" style={{ fontSize: 'var(--pv-text-sm)', marginBottom: 'var(--pv-space-5)' }}>
+                {advice.timelineSummary}
+              </p>
+            ) : null}
+            {advice?.suggestions?.length ? (
+              <ul className="pv-stack pv-stack--sm" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {advice.suggestions
+                  .slice()
+                  .sort((a, b) => (a.rank || 99) - (b.rank || 99))
+                  .map((s) => (
+                    <li key={s.participantId} className="pv-row pv-row--between">
+                      <span>
+                        <span className="pv-badge">#{s.rank}</span>{' '}
+                        <strong>{s.name}</strong>
+                        <span className="pv-table__sub">
+                          score {Number(s.score).toFixed(1)}
+                          {s.rationale ? ` — ${s.rationale}` : ''}
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+            ) : !adviceError ? (
+              <p className="pv-dim">
+                Run Get AI shortlist after participants register. Advice never moves money.
+              </p>
+            ) : null}
           </div>
         </div>
       ) : null}

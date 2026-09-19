@@ -5,6 +5,7 @@ import {
   isRazorpayLiveConfigured,
   rupeesToPaise,
 } from './config'
+import { hydrateRazorpaySecrets } from '@/lib/aws/razorpaySecrets'
 
 export type RazorpayReceipt = {
   id: string
@@ -36,6 +37,7 @@ async function razorpayFetch(path: string, init: RequestInit): Promise<Record<st
 }
 
 export async function createOrder(rupees: number, receipt: string): Promise<RazorpayReceipt> {
+  await hydrateRazorpaySecrets()
   const amountPaise = rupeesToPaise(rupees)
   if (amountPaise <= 0) throw new Error('Amount must be greater than 0')
 
@@ -87,6 +89,7 @@ export async function createPayout(options: {
   destination: string
   idempotencyKey: string
 }): Promise<RazorpayReceipt> {
+  await hydrateRazorpaySecrets()
   const amountPaise = rupeesToPaise(options.rupees)
   if (amountPaise <= 0) throw new Error('Payout amount must be greater than 0')
 

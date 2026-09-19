@@ -1,23 +1,15 @@
-# HackPay frontend (Next.js)
+# HackPay frontend
 
 Hosted on **AWS Amplify** (see repo-root `amplify.yml` and `AWS.md`).
 
-## Local
-
 ```bash
-# from repo root — .env must include DATABASE_URL + Cognito
+# from repo root — .env must include DYNAMODB_TABLE_NAME + Cognito
+cp .env.example .env
+# then fill Cognito / DynamoDB / S3 / SNS from CDK outputs
+
+cd frontend
 npm install
-npm run --prefix frontend dev
+npm run dev
 ```
 
-Build check:
-
-```bash
-npm run build
-```
-
-Requires `DATABASE_URL` (RDS). Cognito env vars enable AWS auth on `/holder`.
-
-## Do not use Vercel
-
-Disconnect Vercel from this GitHub repo (Vercel dashboard → Project → Settings → Git → Disconnect) so GitHub checks stop failing.
+Requires `DYNAMODB_TABLE_NAME` (DynamoDB). Cognito env vars enable AWS auth on `/holder`.

@@ -1,4 +1,4 @@
-import { PublishCommand, SNSClient } from '@aws-sdk/client-sns'
+import { PublishCommand, SNSClient, SubscribeCommand } from '@aws-sdk/client-sns'
 import { getAwsRegion, getSnsTopicArn, isSnsConfigured } from '@/lib/aws/env'
 
 let sns: SNSClient | null = null
@@ -36,6 +36,45 @@ export async function publishAlert(input: {
     return {
       ok: false,
       error: err instanceof Error ? err.message : 'SNS publish failed',
+    }
+  }
+}
+
+/** Email subscribe for demo agent alerts. Caller must confirm the AWS email. */
+export async function subscribeEmail(email: string): Promise<{
+  ok: boolean
+  subscriptionArn?: string
+  pendingConfirm?: boolean
+  error?: string
+}> {
+  if (!isSnsConfigured()) {
+    return { ok: false, error: 'SNS is not configured' }
+  }
+  const trimmed = email.trim().toLowerCase()
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    return { ok: false, error: 'Enter a valid email address' }
+  }
+
+  try {
+    const res = await client().send(
+      new SubscribeCommand({
+        TopicArn: getSnsTopicArn(),
+        Protocol: 'email',
+        Endpoint: trimmed,
+        ReturnSubscriptionArn: true,
+      }),
+    )
+    const arn = res.SubscriptionArn || ''
+    const pending = !arn || arn === 'pending confirmation'
+    return {
+      ok: true,
+      subscriptionArn: arn || undefined,
+      pendingConfirm: pending,
+    }
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'SNS subscribe failed',
     }
   }
 }

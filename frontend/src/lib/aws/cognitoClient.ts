@@ -1,33 +1,25 @@
 /**
- * Browser Cognito helpers (SRP sign-up / sign-in).
- * Falls back to null when pool env vars are unset (local email demo).
+ * Browser Cognito helpers.
+ * Uses USER_PASSWORD_AUTH (same as Amplify/CLI) instead of SRP —
+ * more reliable for email-as-username pools and clearer errors.
  */
 'use client'
 
-import {
-  AuthenticationDetails,
-  CognitoUser,
-  CognitoUserAttribute,
-  CognitoUserPool,
-  type CognitoUserSession,
-} from 'amazon-cognito-identity-js'
 import type { AppRole } from '@/client/utils/authSession'
 
 function poolConfig() {
   const UserPoolId = process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID?.trim() || ''
   const ClientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID?.trim() || ''
+  const Region =
+    process.env.NEXT_PUBLIC_AWS_REGION?.trim() ||
+    (UserPoolId.includes('_') ? UserPoolId.split('_')[0] : '') ||
+    'ap-south-1'
   if (!UserPoolId || !ClientId) return null
-  return { UserPoolId, ClientId }
+  return { UserPoolId, ClientId, Region }
 }
 
 export function isBrowserCognitoEnabled(): boolean {
   return Boolean(poolConfig())
-}
-
-function getUserPool(): CognitoUserPool {
-  const cfg = poolConfig()
-  if (!cfg) throw new Error('Cognito is not configured')
-  return new CognitoUserPool(cfg)
 }
 
 export type CognitoAuthResult = {
@@ -39,99 +31,150 @@ export type CognitoAuthResult = {
   refreshToken: string
 }
 
-function sessionToResult(session: CognitoUserSession, fallbackRole: AppRole): CognitoAuthResult {
-  const idToken = session.getIdToken()
-  const payload = idToken.decodePayload() as Record<string, string>
+type CognitoJsonError = {
+  __type?: string
+  message?: string
+  name?: string
+}
+
+async function cognitoCall<T>(
+  region: string,
+  target: string,
+  body: Record<string, unknown>,
+): Promise<T> {
+  const res = await fetch(`https://cognito-idp.${region}.amazonaws.com/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-amz-json-1.1',
+      'X-Amz-Target': `AWSCognitoIdentityProviderService.${target}`,
+    },
+    body: JSON.stringify(body),
+  })
+  const json = (await res.json()) as T & CognitoJsonError
+  if (!res.ok || json.__type) {
+    throw normalizeCognitoError({
+      code: (json.__type || '').split('#').pop() || json.name || `HTTP_${res.status}`,
+      message: json.message || `Cognito ${target} failed (${res.status})`,
+    })
+  }
+  return json
+}
+
+function decodeJwtPayload(token: string): Record<string, string> {
+  try {
+    const part = token.split('.')[1]
+    const json = atob(part.replace(/-/g, '+').replace(/_/g, '/'))
+    return JSON.parse(json) as Record<string, string>
+  } catch {
+    return {}
+  }
+}
+
+function sessionFromTokens(
+  tokens: { IdToken: string; AccessToken: string; RefreshToken: string },
+  fallbackRole: AppRole,
+): CognitoAuthResult {
+  const payload = decodeJwtPayload(tokens.IdToken)
   const email = String(payload.email || payload['cognito:username'] || '').toLowerCase()
   const role = (payload['custom:role'] as AppRole) || fallbackRole
   return {
     email,
     role,
     name: payload.name,
-    idToken: idToken.getJwtToken(),
-    accessToken: session.getAccessToken().getJwtToken(),
-    refreshToken: session.getRefreshToken().getToken(),
+    idToken: tokens.IdToken,
+    accessToken: tokens.AccessToken,
+    refreshToken: tokens.RefreshToken,
   }
 }
 
-export function cognitoSignUp(input: {
+export async function cognitoSignUp(input: {
   email: string
   password: string
   name: string
   role: AppRole
 }): Promise<{ userConfirmed: boolean; userSub?: string }> {
-  const pool = getUserPool()
+  const cfg = poolConfig()
+  if (!cfg) throw new Error('Cognito is not configured')
   const email = input.email.trim().toLowerCase()
-  // Pool uses email as username — do not send a conflicting email attribute.
-  // Email-as-username pools still need the standard `email` attribute for tokens / aliases.
-  const attributeList = [
-    new CognitoUserAttribute({ Name: 'email', Value: email }),
-    new CognitoUserAttribute({ Name: 'name', Value: input.name.trim() || email.split('@')[0] }),
-    new CognitoUserAttribute({ Name: 'custom:role', Value: input.role }),
-  ]
 
-  return new Promise((resolve, reject) => {
-    pool.signUp(email, input.password, attributeList, [], (err, result) => {
-      if (err) {
-        reject(normalizeCognitoError(err))
-        return
-      }
-      resolve({
-        userConfirmed: Boolean(result?.userConfirmed),
-        userSub: result?.userSub,
-      })
-    })
+  const result = await cognitoCall<{
+    UserConfirmed?: boolean
+    UserSub?: string
+  }>(cfg.Region, 'SignUp', {
+    ClientId: cfg.ClientId,
+    Username: email,
+    Password: input.password,
+    // Email-as-username pools: do not also send email attribute (conflicts).
+    UserAttributes: [
+      { Name: 'name', Value: input.name.trim() || email.split('@')[0] },
+      { Name: 'custom:role', Value: input.role },
+    ],
   })
+
+  return {
+    userConfirmed: Boolean(result.UserConfirmed),
+    userSub: result.UserSub,
+  }
 }
 
-export function cognitoConfirmSignUp(email: string, code: string): Promise<void> {
-  const user = new CognitoUser({
+export async function cognitoConfirmSignUp(email: string, code: string): Promise<void> {
+  const cfg = poolConfig()
+  if (!cfg) throw new Error('Cognito is not configured')
+  await cognitoCall(cfg.Region, 'ConfirmSignUp', {
+    ClientId: cfg.ClientId,
     Username: email.trim().toLowerCase(),
-    Pool: getUserPool(),
-  })
-  return new Promise((resolve, reject) => {
-    user.confirmRegistration(code, true, (err) => {
-      if (err) reject(err)
-      else resolve()
-    })
+    ConfirmationCode: code.trim(),
   })
 }
 
-export function cognitoSignIn(input: {
+export async function cognitoSignIn(input: {
   email: string
   password: string
   role: AppRole
 }): Promise<CognitoAuthResult> {
+  const cfg = poolConfig()
+  if (!cfg) throw new Error('Cognito is not configured')
   const email = input.email.trim().toLowerCase()
-  const user = new CognitoUser({
-    Username: email,
-    Pool: getUserPool(),
-  })
-  const authDetails = new AuthenticationDetails({
-    Username: email,
-    Password: input.password,
+
+  const result = await cognitoCall<{
+    AuthenticationResult?: {
+      IdToken: string
+      AccessToken: string
+      RefreshToken: string
+    }
+    ChallengeName?: string
+  }>(cfg.Region, 'InitiateAuth', {
+    AuthFlow: 'USER_PASSWORD_AUTH',
+    ClientId: cfg.ClientId,
+    AuthParameters: {
+      USERNAME: email,
+      PASSWORD: input.password,
+    },
   })
 
-  return new Promise((resolve, reject) => {
-    user.authenticateUser(authDetails, {
-      onSuccess: (session) => {
-        const attrs = [
-          new CognitoUserAttribute({ Name: 'custom:role', Value: input.role }),
-        ]
-        user.updateAttributes(attrs, () => {
-          // Ignore attribute update failures — session is enough to enter the app.
-          resolve(sessionToResult(session, input.role))
-        })
-      },
-      onFailure: (err) => reject(normalizeCognitoError(err)),
-    })
-  })
+  if (result.ChallengeName) {
+    throw new Error(
+      `Cognito requires an extra step (${result.ChallengeName}). Contact the organizer to confirm your account.`,
+    )
+  }
+  if (!result.AuthenticationResult?.IdToken) {
+    throw new Error('Cognito sign-in returned no tokens.')
+  }
+
+  const session = sessionFromTokens(result.AuthenticationResult, input.role)
+
+  // Best-effort role attribute update — never block login.
+  void cognitoCall(cfg.Region, 'UpdateUserAttributes', {
+    AccessToken: result.AuthenticationResult.AccessToken,
+    UserAttributes: [{ Name: 'custom:role', Value: input.role }],
+  }).catch(() => undefined)
+
+  return session
 }
 
-function normalizeCognitoError(err: unknown): Error {
-  const raw = err as { code?: string; name?: string; message?: string }
-  const code = raw?.code || raw?.name || ''
-  const message = raw?.message || 'Cognito request failed'
+function normalizeCognitoError(err: { code?: string; name?: string; message?: string }): Error {
+  const code = err?.code || err?.name || ''
+  const message = err?.message || 'Cognito request failed'
 
   if (code === 'UsernameExistsException') {
     return new Error('An account with this email already exists. Switch to Sign in.')
@@ -161,38 +204,29 @@ function normalizeCognitoError(err: unknown): Error {
   if (code === 'UserNotFoundException') {
     return new Error('No account for this email. Switch to Create account.')
   }
+  if (code === 'TooManyRequestsException') {
+    return new Error('Too many attempts. Wait a minute and try again.')
+  }
   return new Error(message)
 }
 
-export function cognitoSignOut(email?: string): void {
+export function cognitoSignOut(_email?: string): void {
   try {
-    const pool = getUserPool()
-    const current = pool.getCurrentUser()
-    if (current) {
-      current.signOut()
-      return
+    // Clear any leftover amazon-cognito-identity-js keys from older builds.
+    const keys: string[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (k && (k.includes('CognitoIdentityServiceProvider') || k.includes('amplify'))) {
+        keys.push(k)
+      }
     }
-    if (email) {
-      new CognitoUser({ Username: email, Pool: pool }).signOut()
-    }
+    keys.forEach((k) => localStorage.removeItem(k))
   } catch {
     // ignore
   }
 }
 
-export function cognitoGetSession(): Promise<CognitoAuthResult | null> {
-  if (!isBrowserCognitoEnabled()) return Promise.resolve(null)
-  const pool = getUserPool()
-  const user = pool.getCurrentUser()
-  if (!user) return Promise.resolve(null)
-
-  return new Promise((resolve) => {
-    user.getSession((err: Error | null, session: CognitoUserSession | null) => {
-      if (err || !session?.isValid()) {
-        resolve(null)
-        return
-      }
-      resolve(sessionToResult(session, 'participant'))
-    })
-  })
+export async function cognitoGetSession(): Promise<CognitoAuthResult | null> {
+  // Token refresh can be added later; gate uses explicit sign-in for Ship It.
+  return null
 }

@@ -2,8 +2,7 @@ import * as path from 'path'
 import * as cdk from 'aws-cdk-lib'
 import { Construct } from 'constructs'
 import * as cognito from 'aws-cdk-lib/aws-cognito'
-import * as ec2 from 'aws-cdk-lib/aws-ec2'
-import * as rds from 'aws-cdk-lib/aws-rds'
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb'
 import * as s3 from 'aws-cdk-lib/aws-s3'
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront'
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins'
@@ -15,15 +14,17 @@ import * as iam from 'aws-cdk-lib/aws-iam'
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager'
 import * as amplify from 'aws-cdk-lib/aws-amplify'
 import * as logs from 'aws-cdk-lib/aws-logs'
+import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch'
+import * as cw_actions from 'aws-cdk-lib/aws-cloudwatch-actions'
 
 export interface HackPayStackProps extends cdk.StackProps {
-  /** Public app URL after Amplify/App Runner deploy (used by agent Lambda). */
+  /** Public app URL after Amplify deploy (used by agent Lambda). */
   appUrl?: string
 }
 
 /**
- * Ship It stack: Cognito + RDS Postgres + S3/CloudFront + SNS +
- * EventBridge→Lambda agent tick + Amplify Hosting app shell.
+ * Ship It stack: Cognito + DynamoDB + S3/CloudFront + SNS +
+ * EventBridge→Lambda agent tick + Amplify Hosting shell.
  */
 export class HackPayStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: HackPayStackProps) {
@@ -59,7 +60,6 @@ export class HackPayStack extends cdk.Stack {
       },
       accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
-      // Hackathon demo: skip email confirmation so sign-up → sign-in works immediately.
       userVerification: {
         emailStyle: cognito.VerificationEmailStyle.CODE,
       },
@@ -90,7 +90,6 @@ exports.handler = async (event) => {
       accessTokenValidity: cdk.Duration.hours(1),
       idTokenValidity: cdk.Duration.hours(1),
       refreshTokenValidity: cdk.Duration.days(30),
-      // Required so browser SignUp can set custom:role
       readAttributes: new cognito.ClientAttributes()
         .withStandardAttributes({ email: true, fullname: true, emailVerified: true })
         .withCustomAttributes('role'),
@@ -99,60 +98,34 @@ exports.handler = async (event) => {
         .withCustomAttributes('role'),
     })
 
-    // ── Network + RDS ────────────────────────────────────────
-    const vpc = new ec2.Vpc(this, 'HackPayVpc', {
-      maxAzs: 2,
-      natGateways: 0,
-      subnetConfiguration: [
-        { name: 'public', subnetType: ec2.SubnetType.PUBLIC, cidrMask: 24 },
-      ],
-    })
-
-    const dbSecurityGroup = new ec2.SecurityGroup(this, 'RdsSg', {
-      vpc,
-      description: 'HackPay RDS Postgres',
-      allowAllOutbound: true,
-    })
-    // Publicly reachable for Amplify SSR / local dev (tighten in production).
-    dbSecurityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(5432), 'Postgres from Amplify/dev')
-
-    const dbCredentials = new secretsmanager.Secret(this, 'DbCredentials', {
-      secretName: 'hackpay/rds-credentials',
-      generateSecretString: {
-        secretStringTemplate: JSON.stringify({ username: 'hackpay' }),
-        generateStringKey: 'password',
-        excludePunctuation: true,
-        passwordLength: 32,
-      },
-    })
-
-    const database = new rds.DatabaseInstance(this, 'HackPayDb', {
-      engine: rds.DatabaseInstanceEngine.postgres({
-        version: rds.PostgresEngineVersion.VER_16,
-      }),
-      instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),
-      vpc,
-      vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
-      securityGroups: [dbSecurityGroup],
-      credentials: rds.Credentials.fromSecret(dbCredentials),
-      databaseName: 'hackpay',
-      allocatedStorage: 20,
-      maxAllocatedStorage: 40,
-      publiclyAccessible: true,
-      multiAz: false,
-      deletionProtection: false,
+    // ── DynamoDB (replaces RDS) ──────────────────────────────
+    const dataTable = new dynamodb.Table(this, 'HackPayTable', {
+      tableName: 'hackpay-data',
+      partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'sk', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
-      backupRetention: cdk.Duration.days(1),
-      cloudwatchLogsExports: ['postgresql'],
     })
 
-    // ── S3 + CloudFront (receipts, audit exports, assets) ───
+    dataTable.addGlobalSecondaryIndex({
+      indexName: 'GSI1',
+      partitionKey: { name: 'gsi1pk', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'gsi1sk', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    })
+
+    dataTable.addGlobalSecondaryIndex({
+      indexName: 'GSI2',
+      partitionKey: { name: 'gsi2pk', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'gsi2sk', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    })
+
+    // ── S3 + CloudFront ──────────────────────────────────────
     const assetsBucket = new s3.Bucket(this, 'HackPayAssets', {
-      bucketName: undefined,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
       enforceSSL: true,
-      versioned: false,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
       cors: [
@@ -183,17 +156,29 @@ exports.handler = async (event) => {
       cloudFrontUrl = `https://${distribution.distributionDomainName}`
     }
 
-    // ── SNS (organizer / sponsor alerts) ─────────────────────
     const alertsTopic = new sns.Topic(this, 'HackPayAlerts', {
       topicName: 'hackpay-alerts',
       displayName: 'HackPay Agent Alerts',
     })
 
-    // ── Agent tick: EventBridge → Lambda → HTTPS ─────────────
+    // Optional Razorpay keys (JSON). Leave Amplify env as primary; app hydrates from this ARN only if env empty.
+    const razorpaySecret = new secretsmanager.Secret(this, 'RazorpaySecret', {
+      secretName: 'hackpay/razorpay',
+      description:
+        'Optional JSON: RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAYX_ACCOUNT_NUMBER. Update in console; do not commit values.',
+      secretStringValue: cdk.SecretValue.unsafePlainText(
+        JSON.stringify({
+          RAZORPAY_KEY_ID: '',
+          RAZORPAY_KEY_SECRET: '',
+          RAZORPAYX_ACCOUNT_NUMBER: '',
+        }),
+      ),
+    })
+
     const appUrl =
       props?.appUrl ||
       this.node.tryGetContext('appUrl') ||
-      'https://REPLACE_AFTER_AMPLIFY_DEPLOY.amplifyapp.com'
+      'https://main.d39l7wna3d1uyn.amplifyapp.com'
 
     const agentFn = new lambda.Function(this, 'AgentTickFn', {
       functionName: 'hackpay-agent-tick',
@@ -218,20 +203,23 @@ exports.handler = async (event) => {
       targets: [new targets.LambdaFunction(agentFn)],
     })
 
-    // ── Amplify Hosting (connect your GitHub repo after deploy) ─
-    // Amplify app shell — attach a repository in the console or via CLI.
     const amplifyApp = new amplify.CfnApp(this, 'HackPayAmplifyApp', {
       name: 'hackpay',
-      description: 'HackPay Next.js app — Ship It track',
+      description: 'HackPay Next.js — Cognito + DynamoDB Ship It',
       platform: 'WEB_COMPUTE',
       environmentVariables: [
         { name: 'AMPLIFY_MONOREPO_APP_ROOT', value: 'frontend' },
         { name: 'NEXT_PUBLIC_AWS_REGION', value: this.region },
         { name: 'NEXT_PUBLIC_COGNITO_USER_POOL_ID', value: userPool.userPoolId },
         { name: 'NEXT_PUBLIC_COGNITO_CLIENT_ID', value: userPoolClient.userPoolClientId },
+        { name: 'DYNAMODB_TABLE_NAME', value: dataTable.tableName },
         { name: 'NEXT_PUBLIC_S3_BUCKET', value: assetsBucket.bucketName },
         { name: 'NEXT_PUBLIC_CLOUDFRONT_URL', value: cloudFrontUrl },
         { name: 'NEXT_PUBLIC_SNS_TOPIC_ARN', value: alertsTopic.topicArn },
+        { name: 'SNS_TOPIC_ARN', value: alertsTopic.topicArn },
+        { name: 'RAZORPAY_SECRET_ARN', value: razorpaySecret.secretArn },
+        { name: 'STRANDS_ENABLED', value: 'true' },
+        { name: 'BEDROCK_MODEL_ID', value: 'amazon.nova-lite-v1:0' },
       ],
     })
 
@@ -243,34 +231,71 @@ exports.handler = async (event) => {
       framework: 'Next.js - SSR',
     })
 
-    // IAM user-scoped policy hint for the Amplify compute role (attach in console):
-    // S3 put/get, SNS publish, Secrets Manager read for DB + cron secret.
+    const agentErrorsAlarm = new cloudwatch.Alarm(this, 'AgentTickErrorsAlarm', {
+      alarmName: 'hackpay-agent-tick-errors',
+      alarmDescription: 'HackPay agent Lambda Errors > 0 (ops demo)',
+      metric: agentFn.metricErrors({
+        period: cdk.Duration.minutes(5),
+        statistic: 'Sum',
+      }),
+      threshold: 1,
+      evaluationPeriods: 1,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    })
+    agentErrorsAlarm.addAlarmAction(new cw_actions.SnsAction(alertsTopic))
+
     const appRuntimePolicy = new iam.ManagedPolicy(this, 'HackPayAppRuntimePolicy', {
-      managedPolicyName: 'HackPayAmplifyRuntime',
-      description: 'S3 receipts, SNS alerts, Secrets for HackPay Next.js SSR',
+      description: 'DynamoDB, S3, SNS, Secrets, Bedrock, SES for HackPay Next.js SSR',
       statements: [
+        new iam.PolicyStatement({
+          actions: [
+            'dynamodb:GetItem',
+            'dynamodb:PutItem',
+            'dynamodb:UpdateItem',
+            'dynamodb:DeleteItem',
+            'dynamodb:Query',
+            'dynamodb:Scan',
+            'dynamodb:BatchGetItem',
+            'dynamodb:BatchWriteItem',
+            'dynamodb:DescribeTable',
+          ],
+          resources: [dataTable.tableArn, `${dataTable.tableArn}/index/*`],
+        }),
         new iam.PolicyStatement({
           actions: ['s3:PutObject', 's3:GetObject', 's3:DeleteObject', 's3:ListBucket'],
           resources: [assetsBucket.bucketArn, `${assetsBucket.bucketArn}/*`],
         }),
         new iam.PolicyStatement({
-          actions: ['sns:Publish'],
+          actions: ['sns:Publish', 'sns:Subscribe'],
           resources: [alertsTopic.topicArn],
         }),
         new iam.PolicyStatement({
           actions: ['secretsmanager:GetSecretValue'],
-          resources: [dbCredentials.secretArn, agentCronSecret.secretArn],
+          resources: [agentCronSecret.secretArn, razorpaySecret.secretArn],
+        }),
+        new iam.PolicyStatement({
+          sid: 'SesSendOptional',
+          actions: ['ses:SendEmail', 'ses:SendRawEmail'],
+          resources: ['*'],
+        }),
+        new iam.PolicyStatement({
+          sid: 'BedrockInvokeForStrands',
+          actions: [
+            'bedrock:InvokeModel',
+            'bedrock:InvokeModelWithResponseStream',
+            'bedrock:Converse',
+            'bedrock:ConverseStream',
+          ],
+          resources: ['*'],
         }),
       ],
     })
 
-    // ── Outputs ──────────────────────────────────────────────
     new cdk.CfnOutput(this, 'UserPoolId', { value: userPool.userPoolId })
     new cdk.CfnOutput(this, 'UserPoolClientId', { value: userPoolClient.userPoolClientId })
-    new cdk.CfnOutput(this, 'RdsEndpoint', { value: database.instanceEndpoint.hostname })
-    new cdk.CfnOutput(this, 'RdsPort', { value: String(database.instanceEndpoint.port) })
-    new cdk.CfnOutput(this, 'RdsSecretArn', { value: dbCredentials.secretArn })
-    new cdk.CfnOutput(this, 'DatabaseName', { value: 'hackpay' })
+    new cdk.CfnOutput(this, 'DynamoTableName', { value: dataTable.tableName })
+    new cdk.CfnOutput(this, 'DynamoTableArn', { value: dataTable.tableArn })
     new cdk.CfnOutput(this, 'AssetsBucketName', { value: assetsBucket.bucketName })
     new cdk.CfnOutput(this, 'CloudFrontUrl', {
       value: cloudFrontUrl,
@@ -280,15 +305,15 @@ exports.handler = async (event) => {
     })
     new cdk.CfnOutput(this, 'AlertsTopicArn', { value: alertsTopic.topicArn })
     new cdk.CfnOutput(this, 'AgentCronSecretArn', { value: agentCronSecret.secretArn })
+    new cdk.CfnOutput(this, 'RazorpaySecretArn', { value: razorpaySecret.secretArn })
     new cdk.CfnOutput(this, 'AgentLambdaName', { value: agentFn.functionName })
+    new cdk.CfnOutput(this, 'AgentErrorsAlarmName', { value: agentErrorsAlarm.alarmName })
     new cdk.CfnOutput(this, 'AmplifyAppId', { value: amplifyApp.attrAppId })
-    new cdk.CfnOutput(this, 'AmplifyDefaultDomain', { value: amplifyApp.attrDefaultDomain })
     new cdk.CfnOutput(this, 'AppRuntimePolicyArn', { value: appRuntimePolicy.managedPolicyArn })
     new cdk.CfnOutput(this, 'Region', { value: this.region })
-    new cdk.CfnOutput(this, 'DatabaseUrlHint', {
+    new cdk.CfnOutput(this, 'WafNote', {
       value:
-        'postgresql://hackpay:<password-from-secret>@<RdsEndpoint>:5432/hackpay?sslmode=require',
-      description: 'Build DATABASE_URL from RdsEndpoint + DbCredentials secret',
+        'Attach AWS WAF WebACL to Amplify in console (Security → WAF) for the security checkbox; not auto-associated to avoid breaking deploys.',
     })
   }
 }

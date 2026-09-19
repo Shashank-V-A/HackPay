@@ -180,7 +180,7 @@ export default function WalletGate({
             </div>
 
             <div key={loginStep} className="pv-gate__step">
-              {connectError ? (
+              {connectError && loginStep === 'profile' ? (
                 <div className="pv-gate__alert" role="alert" style={{ marginBottom: 12 }}>
                   <Icon name="alert" size={16} />
                   <p>{connectError}</p>
@@ -195,6 +195,13 @@ export default function WalletGate({
                     <Icon name="chevronRight" size={14} />
                     Back to details
                   </button>
+
+                  {connectError ? (
+                    <div className="pv-gate__alert" role="alert">
+                      <Icon name="alert" size={16} />
+                      <p>{connectError}</p>
+                    </div>
+                  ) : null}
 
                   {connectSlot}
                 </div>

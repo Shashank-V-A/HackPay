@@ -9,6 +9,12 @@ import {
 import { fundingGapXlm, canExecuteRelease, getPayoutWorkflowStage } from '@/client/utils/payoutWorkflow'
 import { handleExecute } from '@/lib/backend/escrowHandlers'
 import { appendAgentLog, summarizeAgentLog } from '@/lib/agent/summarize'
+import {
+  isStrandsEnabled,
+  strandsAdviseWinners,
+  strandsCraftNotice,
+  strandsSummarizeTick,
+} from '@/lib/agent/strands'
 import { getActiveDataBackend, isDynamoConfigured } from '@/lib/aws/env'
 import { buildReceiptKey, uploadAuditObject } from '@/lib/aws/s3'
 import { publishAlert } from '@/lib/aws/sns'
@@ -128,8 +134,14 @@ export async function runAgentTick(): Promise<AgentTickResult> {
       log: [...(hackathon.agent?.log || [])],
       gates: hackathon.agent?.gates,
       lastReceipt: hackathon.agent?.lastReceipt,
+      lastReceiptUrl: hackathon.agent?.lastReceiptUrl,
       summary: hackathon.agent?.summary,
       compliance: hackathon.agent?.compliance,
+      timelineSummary: hackathon.agent?.timelineSummary,
+      nextSteps: hackathon.agent?.nextSteps,
+      suggestions: hackathon.agent?.suggestions,
+      adviceAt: hackathon.agent?.adviceAt,
+      adviceProvider: hackathon.agent?.adviceProvider,
     }
     const proposal = findProposal(hackathon, proposals)
     const matchedProposal: Record<string, unknown> | undefined = proposal
@@ -147,14 +159,22 @@ export async function runAgentTick(): Promise<AgentTickResult> {
       !agent.notified?.funding
     ) {
       const remaining = fundingGapXlm(hackathon)
+      const notice = await strandsCraftNotice({
+        stage: 'funding',
+        hackathonName: hackathon.name,
+        role: 'sponsor',
+        fallbackTitle: 'HackPay vault still needs funding',
+        fallbackBody: `${hackathon.name} needs ₹${remaining} more before winners can be paid. Fund it from the sponsor console.`,
+        context: `remaining_inr=${remaining}`,
+      })
       pushNotice(agent.inbox!, {
         wallet: hackathon.sponsorAddress,
         role: 'sponsor',
         hackathonId: hackathon.id,
         hackathonName: hackathon.name,
         stage: 'funding',
-        title: 'HackPay vault still needs funding',
-        body: `${hackathon.name} needs ₹${remaining} more before winners can be paid. Fund it from the sponsor console.`,
+        title: notice.title,
+        body: notice.body,
         href: '/verifier',
       })
       agent.notified!.funding = nowIso()
@@ -170,7 +190,20 @@ export async function runAgentTick(): Promise<AgentTickResult> {
     }
 
     if (ended && !hackathon.winnersSelected && !agent.notified?.event_ended) {
-      const body = `${hackathon.name} has ended. Choose winners so the payout can be proposed.`
+      const orgNotice = await strandsCraftNotice({
+        stage: 'event_ended',
+        hackathonName: hackathon.name,
+        role: 'organizer',
+        fallbackTitle: 'Event ended — choose winners',
+        fallbackBody: `${hackathon.name} has ended. Choose winners so the payout can be proposed.`,
+      })
+      const sponsorNotice = await strandsCraftNotice({
+        stage: 'event_ended',
+        hackathonName: hackathon.name,
+        role: 'sponsor',
+        fallbackTitle: 'Event ended — waiting on winners',
+        fallbackBody: `${hackathon.name} has ended. The organizer needs to select winners before you can co-approve a payout.`,
+      })
       if (hackathon.organizerAddress) {
         pushNotice(agent.inbox!, {
           wallet: hackathon.organizerAddress,
@@ -178,8 +211,8 @@ export async function runAgentTick(): Promise<AgentTickResult> {
           hackathonId: hackathon.id,
           hackathonName: hackathon.name,
           stage: 'event_ended',
-          title: 'Event ended — choose winners',
-          body,
+          title: orgNotice.title,
+          body: orgNotice.body,
           href: '/issuer',
           view: 'winners',
         })
@@ -191,8 +224,8 @@ export async function runAgentTick(): Promise<AgentTickResult> {
           hackathonId: hackathon.id,
           hackathonName: hackathon.name,
           stage: 'event_ended',
-          title: 'Event ended — waiting on winners',
-          body: `${hackathon.name} has ended. The organizer needs to select winners before you can co-approve a payout.`,
+          title: sponsorNotice.title,
+          body: sponsorNotice.body,
           href: '/verifier',
         })
       }
@@ -206,6 +239,25 @@ export async function runAgentTick(): Promise<AgentTickResult> {
       }
       actions.push(endedAction)
       agent.log = appendAgentLog(agent.log, endedAction)
+
+      // Bedrock/Strands: analyze repos + timeline → advisory shortlist (organizer still confirms)
+      if (isStrandsEnabled() && (hackathon.participants?.length || 0) > 0) {
+        const advice = await strandsAdviseWinners(hackathon, workflow)
+        if (advice.ok) {
+          agent.timelineSummary = advice.timelineSummary
+          agent.nextSteps = advice.nextSteps
+          agent.suggestions = advice.suggestions
+          agent.adviceAt = nowIso()
+          agent.adviceProvider = 'strands-bedrock'
+          dirty = true
+          actions.push({
+            stage: 'event_ended',
+            hackathonId: hackathon.id,
+            hackathonName: hackathon.name,
+            detail: `Strands advice: ${(advice.suggestions || []).length} shortlisted projects`,
+          })
+        }
+      }
     }
 
     if (workflow === 'winners_selected' && !agent.notified?.propose && hackathon.organizerAddress) {
@@ -271,6 +323,24 @@ export async function runAgentTick(): Promise<AgentTickResult> {
         agent.lastReceipt = executed.txHash
         agent.compliance = executed.compliance
         agent.summary = moneyCopy
+        const receiptKeyId = executed.txHash || String(Date.now())
+        const uploaded = await uploadAuditObject({
+          key: buildReceiptKey(hackathon.id, 'execute', receiptKeyId),
+          body: JSON.stringify(
+            {
+              hackathonId: hackathon.id,
+              receipt: executed.txHash,
+              compliance: executed.compliance,
+              gates: executed.gates,
+              at: executedAt,
+            },
+            null,
+            2,
+          ),
+        })
+        if (uploaded.ok && uploaded.url) {
+          agent.lastReceiptUrl = uploaded.url
+        }
         const updatedProposal = {
           ...matchedProposal,
           status: 'executed',
@@ -335,24 +405,11 @@ export async function runAgentTick(): Promise<AgentTickResult> {
           payoutTxHash: executed.txHash,
         })
 
-        await uploadAuditObject({
-          key: buildReceiptKey(hackathon.id, 'execute', executed.txHash || String(Date.now())),
-          body: JSON.stringify(
-            {
-              hackathonId: hackathon.id,
-              receipt: executed.txHash,
-              compliance: executed.compliance,
-              gates: executed.gates,
-              at: executedAt,
-            },
-            null,
-            2,
-          ),
-        })
-
         await publishAlert({
           subject: `HackPay payout: ${hackathon.name}`,
-          message: `${moneyCopy}\nReceipt: ${executed.txHash}`,
+          message: `${moneyCopy}\nReceipt: ${executed.txHash}${
+            agent.lastReceiptUrl ? `\nAudit: ${agent.lastReceiptUrl}` : ''
+          }`,
           attributes: {
             stage: 'released',
             hackathonId: hackathon.id,
@@ -379,7 +436,9 @@ export async function runAgentTick(): Promise<AgentTickResult> {
     }
   }
 
-  return { ok: true, ranAt, source, actions, summary: summarizeAgentLog(actions) }
+  const ruleSummary = summarizeAgentLog(actions)
+  const aiSummary = await strandsSummarizeTick(actions)
+  return { ok: true, ranAt, source, actions, summary: aiSummary || ruleSummary }
 }
 
 export async function listAgentNotifications(wallet: string): Promise<AgentNotification[]> {
