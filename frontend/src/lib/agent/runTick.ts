@@ -134,6 +134,7 @@ export async function runAgentTick(): Promise<AgentTickResult> {
       log: [...(hackathon.agent?.log || [])],
       gates: hackathon.agent?.gates,
       lastReceipt: hackathon.agent?.lastReceipt,
+      lastReceiptUrl: hackathon.agent?.lastReceiptUrl,
       summary: hackathon.agent?.summary,
       compliance: hackathon.agent?.compliance,
       timelineSummary: hackathon.agent?.timelineSummary,
@@ -322,6 +323,24 @@ export async function runAgentTick(): Promise<AgentTickResult> {
         agent.lastReceipt = executed.txHash
         agent.compliance = executed.compliance
         agent.summary = moneyCopy
+        const receiptKeyId = executed.txHash || String(Date.now())
+        const uploaded = await uploadAuditObject({
+          key: buildReceiptKey(hackathon.id, 'execute', receiptKeyId),
+          body: JSON.stringify(
+            {
+              hackathonId: hackathon.id,
+              receipt: executed.txHash,
+              compliance: executed.compliance,
+              gates: executed.gates,
+              at: executedAt,
+            },
+            null,
+            2,
+          ),
+        })
+        if (uploaded.ok && uploaded.url) {
+          agent.lastReceiptUrl = uploaded.url
+        }
         const updatedProposal = {
           ...matchedProposal,
           status: 'executed',
@@ -386,24 +405,11 @@ export async function runAgentTick(): Promise<AgentTickResult> {
           payoutTxHash: executed.txHash,
         })
 
-        await uploadAuditObject({
-          key: buildReceiptKey(hackathon.id, 'execute', executed.txHash || String(Date.now())),
-          body: JSON.stringify(
-            {
-              hackathonId: hackathon.id,
-              receipt: executed.txHash,
-              compliance: executed.compliance,
-              gates: executed.gates,
-              at: executedAt,
-            },
-            null,
-            2,
-          ),
-        })
-
         await publishAlert({
           subject: `HackPay payout: ${hackathon.name}`,
-          message: `${moneyCopy}\nReceipt: ${executed.txHash}`,
+          message: `${moneyCopy}\nReceipt: ${executed.txHash}${
+            agent.lastReceiptUrl ? `\nAudit: ${agent.lastReceiptUrl}` : ''
+          }`,
           attributes: {
             stage: 'released',
             hackathonId: hackathon.id,

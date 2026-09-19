@@ -61,11 +61,11 @@ const VIEW_META = {
   dashboard: { title: 'Dashboard', desc: 'Everything that needs your attention right now.' },
   hackathons: { title: 'My Hackathons', desc: 'Every event you organize.' },
   participants: { title: 'Participants', desc: 'Registrations, shortlists and payout addresses.' },
-  timeline: { title: 'Event Timeline', desc: 'Schedule for a hackathon. Import from a PDF event card or edit by hand.' },
-  winners: { title: 'Select Winners', desc: 'Assign prize tiers and amounts before proposing a payout.' },
+  timeline: { title: 'Event Timeline', desc: 'Hackathon schedule only (agenda). Not the agent orchestration log — that lives on the Dashboard.' },
+  winners: { title: 'Select Winners', desc: 'Assign prize tiers and amounts before proposing a payout. Optional AI shortlist is advisory.' },
   payouts: { title: 'Payout Proposals', desc: 'Propose, track sponsor approval, and execute INR payouts.' },
   audit: { title: 'Audit Logs', desc: 'Every organizer action, exportable as CSV.' },
-  settings: { title: 'Settings', desc: 'Two-factor authentication for this console.' },
+  settings: { title: 'Settings', desc: 'Two-factor authentication and demo alert email for this console.' },
   'create-hackathon': { title: 'Create Hackathon', desc: 'Set up a new event and its prize pool.' },
 }
 

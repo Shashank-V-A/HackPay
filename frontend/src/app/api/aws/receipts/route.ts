@@ -1,15 +1,30 @@
 import { NextResponse } from 'next/server'
 import { AuthError, requireAuthIfConfigured } from '@/lib/aws/auth'
-import { buildReceiptKey, createPresignedPutUrl, uploadAuditObject } from '@/lib/aws/s3'
+import { buildReceiptKey, createPresignedPutUrl, receiptPublicUrl, uploadAuditObject } from '@/lib/aws/s3'
 import { isS3Configured } from '@/lib/aws/env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 /**
- * POST /api/aws/receipts
- * Body: { hackathonId, kind, id, payload } — stores JSON audit/receipt on S3.
+ * POST /api/aws/receipts — stores JSON audit/receipt on S3.
+ * GET /api/aws/receipts?hackathonId=&kind=&id= — returns deterministic CloudFront/S3 URL.
  */
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const hackathonId = searchParams.get('hackathonId')?.trim()
+  const kind = searchParams.get('kind')?.trim() || 'execute'
+  const id = searchParams.get('id')?.trim()
+  if (!hackathonId || !id) {
+    return NextResponse.json({ success: false, error: 'hackathonId and id are required' }, { status: 400 })
+  }
+  const url = receiptPublicUrl(hackathonId, kind, id)
+  if (!url) {
+    return NextResponse.json({ success: false, error: 'S3/CloudFront is not configured' }, { status: 503 })
+  }
+  return NextResponse.json({ success: true, url, key: buildReceiptKey(hackathonId, kind, id) })
+}
+
 export async function POST(request: Request) {
   if (!isS3Configured()) {
     return NextResponse.json({ success: false, error: 'S3 is not configured' }, { status: 503 })

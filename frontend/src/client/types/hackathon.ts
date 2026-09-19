@@ -79,6 +79,8 @@ export type HackathonAgentState = {
   log?: AgentLogEntry[]
   gates?: GateResult[]
   lastReceipt?: string
+  /** CloudFront (or S3) URL for the last audit JSON receipt */
+  lastReceiptUrl?: string
   summary?: string
   compliance?: Record<string, unknown>
   /** Bedrock/Strands timeline narrative */

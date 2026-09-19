@@ -58,6 +58,8 @@ That updates the agent Lambda `APP_URL`.
 
 ### Optional: subscribe email to SNS
 
+In the organizer **Dashboard** or **Settings**, use **Agent alert email**, or:
+
 ```bash
 aws sns subscribe \
   --topic-arn "$SNS_TOPIC_ARN" \
@@ -65,7 +67,31 @@ aws sns subscribe \
   --notification-endpoint you@college.edu
 ```
 
-Confirm the subscription email.
+Confirm the subscription email. App route: `POST /api/aws/sns/subscribe` with `{ "email": "…" }`.
+
+### Optional: Secrets Manager for Razorpay
+
+Stack output `RazorpaySecretArn` (`hackpay/razorpay`). Put JSON:
+
+```json
+{ "RAZORPAY_KEY_ID": "rzp_test_…", "RAZORPAY_KEY_SECRET": "…", "RAZORPAYX_ACCOUNT_NUMBER": "" }
+```
+
+Set Amplify `RAZORPAY_SECRET_ARN` (CDK sets it on the Amplify app shell). **Amplify env keys still win** if both are set — secrets only fill gaps.
+
+### Optional: CloudWatch alarm
+
+Stack creates `hackpay-agent-tick-errors` on agent Lambda Errors ≥ 1 and notifies the SNS topic (ops slide).
+
+### Optional: SES winner emails
+
+1. Verify `SES_FROM_EMAIL` in SES (same region).
+2. Set Amplify env `SES_FROM_EMAIL`.
+3. Saving winners calls `POST /api/notify/winners` (sends only when participants have emails; otherwise SNS-only).
+
+### Optional: WAF on Amplify
+
+Attach an AWS WAF WebACL in the Amplify console (**Hosting → App settings → Access control / WAF**). Not wired in CDK automatically so deploys stay safe; use it as the security checkbox.
 
 ## Local run with AWS
 
@@ -106,10 +132,11 @@ Check `GET /api/health` → `razorpayConfigured: true`.
 
 1. Sign up with **Cognito** (role = organizer).
 2. Create hackathon; sponsor funds (Razorpay or mock).
-3. Dual-approve payout.
-4. Show **Lambda/EventBridge** tick (or Run tick) writing inbox + **SNS** alert + **S3** receipt URL.
-5. Architecture: Amplify → Cognito → DynamoDB → **Strands/Bedrock** (advice) → S3/CloudFront → SNS → EventBridge/Lambda.
-6. Show Strands shortlist on an ended event (`payload.agent.suggestions`) — organizer still confirms winners.
+3. **Select Winners** → Get AI shortlist → Preselect → save (humans still confirm).
+4. Dual-approve payout.
+5. Show **Agent orchestration log** (Dashboard) vs **Event Timeline** (schedule).
+6. Show **Lambda/EventBridge** tick writing inbox + **SNS** alert + **CloudFront** receipt link.
+7. Architecture: Amplify → Cognito → DynamoDB → **Strands/Bedrock** → S3/CloudFront → SNS → EventBridge/Lambda (+ optional Secrets Manager, CloudWatch alarm, SES, WAF).
 
 ## Cost notes
 

@@ -56,17 +56,26 @@ export default function AgentConsole({
         detail: entry.detail,
         txHash: entry.txHash,
       }))
-  const gates = hackathons.find((h) => h.agent?.gates?.length)?.agent?.gates
-  const receipt = hackathons.find((h) => h.agent?.lastReceipt)?.agent?.lastReceipt
-    || tick?.actions?.find((a) => a.txHash)?.txHash
+  const withAgent = hackathons.filter((h) => h.agent)
+  const gates = withAgent.find((h) => h.agent?.gates?.length)?.agent?.gates
+  const receiptHack =
+    withAgent.find((h) => h.agent?.lastReceiptUrl) ||
+    withAgent.find((h) => h.agent?.lastReceipt)
+  const receipt = receiptHack?.agent?.lastReceipt || tick?.actions?.find((a) => a.txHash)?.txHash
+  const receiptUrl = receiptHack?.agent?.lastReceiptUrl
+  const adviceHack = withAgent.find((h) => h.agent?.suggestions?.length || h.agent?.timelineSummary)
+  const suggestions = adviceHack?.agent?.suggestions || []
+  const timelineSummary = adviceHack?.agent?.timelineSummary
+  const nextSteps = adviceHack?.agent?.nextSteps || []
 
   return (
     <section className="pv-card" style={{ animation: 'pv-fade-in 0.45s ease both' }}>
       <div className="pv-card__header">
         <div>
-          <h3 className="pv-card__title">HackPay agent</h3>
+          <h3 className="pv-card__title">Agent orchestration log</h3>
           <p className="pv-card__subtitle">
-            Last tick {formatTickTime(tick?.ranAt || hackathons.find((h) => h.agent?.lastTickAt)?.agent?.lastTickAt)}
+            Background payout agent — not the Event Timeline schedule. Last tick{' '}
+            {formatTickTime(tick?.ranAt || hackathons.find((h) => h.agent?.lastTickAt)?.agent?.lastTickAt)}
             {tick?.source ? ` · ${tick.source}` : ''}
           </p>
         </div>
@@ -94,6 +103,44 @@ export default function AgentConsole({
           </div>
         ) : null}
 
+        {(timelineSummary || suggestions.length > 0) ? (
+          <div style={{ marginBottom: 'var(--pv-space-5)' }}>
+            <p className="pv-muted" style={{ fontSize: 'var(--pv-text-sm)', marginBottom: 'var(--pv-space-3)' }}>
+              <strong>Latest Strands advice</strong>
+              {adviceHack?.name ? ` · ${adviceHack.name}` : ''}
+            </p>
+            {timelineSummary ? (
+              <p className="pv-dim" style={{ fontSize: 'var(--pv-text-sm)', marginBottom: 'var(--pv-space-3)' }}>
+                {timelineSummary}
+              </p>
+            ) : null}
+            {suggestions.length > 0 ? (
+              <ul className="pv-stack pv-stack--sm" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {suggestions
+                  .slice()
+                  .sort((a, b) => (a.rank || 99) - (b.rank || 99))
+                  .slice(0, 5)
+                  .map((s) => (
+                    <li key={s.participantId}>
+                      <span className="pv-badge">#{s.rank}</span>{' '}
+                      <strong>{s.name}</strong>
+                      <span className="pv-table__sub">
+                        {' '}
+                        score {Number(s.score).toFixed(1)}
+                        {s.rationale ? ` — ${s.rationale}` : ''}
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+            ) : null}
+            {nextSteps.length > 0 ? (
+              <p className="pv-dim" style={{ fontSize: 'var(--pv-text-sm)', marginTop: 'var(--pv-space-3)' }}>
+                Next: {nextSteps.slice(0, 3).join(' · ')}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         {actions.length === 0 ? (
           <p className="pv-dim">No actions this tick. Open this page after an event ends, after winners are saved, or after both sides approve.</p>
         ) : (
@@ -116,7 +163,34 @@ export default function AgentConsole({
           <p className="pv-muted" style={{ marginTop: 'var(--pv-space-5)', fontSize: 'var(--pv-text-sm)' }}>
             Receipt <span className="pv-mono">{receipt}</span>
             {isQueuedPayoutReceipt(receipt) ? ` — ${payoutStatusCopy(receipt)}` : ''}
+            {receiptUrl ? (
+              <>
+                {' · '}
+                <a href={receiptUrl} target="_blank" rel="noreferrer">
+                  Open CloudFront audit JSON
+                  <Icon name="external" size={12} />
+                </a>
+              </>
+            ) : null}
           </p>
+        ) : null}
+
+        {withAgent.some((h) => h.agent?.lastReceiptUrl) ? (
+          <ul className="pv-stack pv-stack--sm" style={{ listStyle: 'none', padding: 0, marginTop: 'var(--pv-space-4)' }}>
+            {withAgent
+              .filter((h) => h.agent?.lastReceiptUrl)
+              .slice(0, 5)
+              .map((h) => (
+                <li key={h.id}>
+                  <a href={h.agent!.lastReceiptUrl!} target="_blank" rel="noreferrer">
+                    {h.name} audit receipt
+                  </a>
+                  {h.agent?.lastReceipt ? (
+                    <span className="pv-table__sub"> · {h.agent.lastReceipt}</span>
+                  ) : null}
+                </li>
+              ))}
+          </ul>
         ) : null}
       </div>
     </section>

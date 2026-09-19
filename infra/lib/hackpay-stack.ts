@@ -14,6 +14,8 @@ import * as iam from 'aws-cdk-lib/aws-iam'
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager'
 import * as amplify from 'aws-cdk-lib/aws-amplify'
 import * as logs from 'aws-cdk-lib/aws-logs'
+import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch'
+import * as cw_actions from 'aws-cdk-lib/aws-cloudwatch-actions'
 
 export interface HackPayStackProps extends cdk.StackProps {
   /** Public app URL after Amplify deploy (used by agent Lambda). */
@@ -153,6 +155,20 @@ exports.handler = async (event) => {
       displayName: 'HackPay Agent Alerts',
     })
 
+    // Optional Razorpay keys (JSON). Leave Amplify env as primary; app hydrates from this ARN only if env empty.
+    const razorpaySecret = new secretsmanager.Secret(this, 'RazorpaySecret', {
+      secretName: 'hackpay/razorpay',
+      description:
+        'Optional JSON: RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAYX_ACCOUNT_NUMBER. Update in console; do not commit values.',
+      secretStringValue: cdk.SecretValue.unsafePlainText(
+        JSON.stringify({
+          RAZORPAY_KEY_ID: '',
+          RAZORPAY_KEY_SECRET: '',
+          RAZORPAYX_ACCOUNT_NUMBER: '',
+        }),
+      ),
+    })
+
     const appUrl =
       props?.appUrl ||
       this.node.tryGetContext('appUrl') ||
@@ -194,6 +210,8 @@ exports.handler = async (event) => {
         { name: 'NEXT_PUBLIC_S3_BUCKET', value: assetsBucket.bucketName },
         { name: 'NEXT_PUBLIC_CLOUDFRONT_URL', value: `https://${distribution.distributionDomainName}` },
         { name: 'NEXT_PUBLIC_SNS_TOPIC_ARN', value: alertsTopic.topicArn },
+        { name: 'SNS_TOPIC_ARN', value: alertsTopic.topicArn },
+        { name: 'RAZORPAY_SECRET_ARN', value: razorpaySecret.secretArn },
         { name: 'STRANDS_ENABLED', value: 'true' },
         { name: 'BEDROCK_MODEL_ID', value: 'amazon.nova-lite-v1:0' },
       ],
@@ -207,8 +225,22 @@ exports.handler = async (event) => {
       framework: 'Next.js - SSR',
     })
 
+    const agentErrorsAlarm = new cloudwatch.Alarm(this, 'AgentTickErrorsAlarm', {
+      alarmName: 'hackpay-agent-tick-errors',
+      alarmDescription: 'HackPay agent Lambda Errors > 0 (ops demo)',
+      metric: agentFn.metricErrors({
+        period: cdk.Duration.minutes(5),
+        statistic: 'Sum',
+      }),
+      threshold: 1,
+      evaluationPeriods: 1,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    })
+    agentErrorsAlarm.addAlarmAction(new cw_actions.SnsAction(alertsTopic))
+
     const appRuntimePolicy = new iam.ManagedPolicy(this, 'HackPayAppRuntimePolicy', {
-      description: 'DynamoDB, S3, SNS, Secrets, Bedrock for HackPay Next.js SSR',
+      description: 'DynamoDB, S3, SNS, Secrets, Bedrock, SES for HackPay Next.js SSR',
       statements: [
         new iam.PolicyStatement({
           actions: [
@@ -229,12 +261,17 @@ exports.handler = async (event) => {
           resources: [assetsBucket.bucketArn, `${assetsBucket.bucketArn}/*`],
         }),
         new iam.PolicyStatement({
-          actions: ['sns:Publish'],
+          actions: ['sns:Publish', 'sns:Subscribe'],
           resources: [alertsTopic.topicArn],
         }),
         new iam.PolicyStatement({
           actions: ['secretsmanager:GetSecretValue'],
-          resources: [agentCronSecret.secretArn],
+          resources: [agentCronSecret.secretArn, razorpaySecret.secretArn],
+        }),
+        new iam.PolicyStatement({
+          sid: 'SesSendOptional',
+          actions: ['ses:SendEmail', 'ses:SendRawEmail'],
+          resources: ['*'],
         }),
         new iam.PolicyStatement({
           sid: 'BedrockInvokeForStrands',
@@ -259,9 +296,15 @@ exports.handler = async (event) => {
     })
     new cdk.CfnOutput(this, 'AlertsTopicArn', { value: alertsTopic.topicArn })
     new cdk.CfnOutput(this, 'AgentCronSecretArn', { value: agentCronSecret.secretArn })
+    new cdk.CfnOutput(this, 'RazorpaySecretArn', { value: razorpaySecret.secretArn })
     new cdk.CfnOutput(this, 'AgentLambdaName', { value: agentFn.functionName })
+    new cdk.CfnOutput(this, 'AgentErrorsAlarmName', { value: agentErrorsAlarm.alarmName })
     new cdk.CfnOutput(this, 'AmplifyAppId', { value: amplifyApp.attrAppId })
     new cdk.CfnOutput(this, 'AppRuntimePolicyArn', { value: appRuntimePolicy.managedPolicyArn })
     new cdk.CfnOutput(this, 'Region', { value: this.region })
+    new cdk.CfnOutput(this, 'WafNote', {
+      value:
+        'Attach AWS WAF WebACL to Amplify in console (Security → WAF) for the security checkbox; not auto-associated to avoid breaking deploys.',
+    })
   }
 }

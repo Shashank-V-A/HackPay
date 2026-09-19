@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import Icon from '../../components/Icon'
+import AgentAlertsSubscribe from '../../components/AgentAlertsSubscribe'
 
 /**
  * Two-factor auth for the organizer console.
@@ -251,41 +252,45 @@ export default function TwoFASetup() {
   // failure the organizer cannot do anything about.
   if (unavailable) {
     return (
-      <div className="pv-card">
-        <div className="pv-card__header">
-          <div>
-            <h3 className="pv-card__title">Two-factor authentication</h3>
-            <p className="pv-card__subtitle">Extra confirmation for payout and revocation actions</p>
+      <div className="pv-stack pv-stack--lg">
+        <AgentAlertsSubscribe />
+        <div className="pv-card">
+          <div className="pv-card__header">
+            <div>
+              <h3 className="pv-card__title">Two-factor authentication</h3>
+              <p className="pv-card__subtitle">Extra confirmation for payout and revocation actions</p>
+            </div>
+            <div className="pv-card__actions">
+              <span className="pv-badge">Unavailable</span>
+            </div>
           </div>
-          <div className="pv-card__actions">
-            <span className="pv-badge">Unavailable</span>
+          <div className="pv-empty">
+            <span className="pv-empty__icon">
+              <Icon name="shield" size={20} />
+            </span>
+            <h4 className="pv-empty__title">Not available in this environment</h4>
+            <p className="pv-empty__text">
+              2FA needs the HackPay API running on port 3000. Escrow, winner selection and payouts
+              all work without it — they are secured by your signed-in account, not by this console.
+            </p>
+            <button
+              type="button"
+              className="pv-btn pv-btn--secondary pv-btn--sm"
+              onClick={checkStatus}
+              disabled={loading}
+            >
+              <Icon name="refresh" size={14} />
+              Check again
+            </button>
           </div>
-        </div>
-        <div className="pv-empty">
-          <span className="pv-empty__icon">
-            <Icon name="shield" size={20} />
-          </span>
-          <h4 className="pv-empty__title">Not available in this environment</h4>
-          <p className="pv-empty__text">
-            2FA needs the HackPay API running on port 3000. Escrow, winner selection and payouts
-            all work without it — they are secured by your signed-in account, not by this console.
-          </p>
-          <button
-            type="button"
-            className="pv-btn pv-btn--secondary pv-btn--sm"
-            onClick={checkStatus}
-            disabled={loading}
-          >
-            <Icon name="refresh" size={14} />
-            Check again
-          </button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="pv-stack">
+    <div className="pv-stack pv-stack--lg">
+      <AgentAlertsSubscribe />
       <div className="pv-card">
         <div className="pv-card__header">
           <div>

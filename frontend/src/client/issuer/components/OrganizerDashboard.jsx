@@ -20,6 +20,7 @@ import {
 import { useAgentInbox } from '../../hooks/useAgentInbox'
 import AgentInbox from '../../components/AgentInbox'
 import AgentConsole from '../../components/AgentConsole'
+import AgentAlertsSubscribe from '../../components/AgentAlertsSubscribe'
 
 function HackathonRow({ hackathon, sessionWallet, onNavigate, onDeleted, proposals }) {
   const status = deriveStatus(hackathon)
@@ -204,6 +205,8 @@ export default function OrganizerDashboard({ sessionWallet, onNavigate }) {
         onRun={() => void reloadInbox()}
         hackathons={hackathons}
       />
+
+      <AgentAlertsSubscribe />
 
       {nudges.length > 0 ? (
         <div className="pv-stack pv-stack--sm">

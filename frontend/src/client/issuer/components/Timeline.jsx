@@ -205,11 +205,13 @@ export default function Timeline({ sessionWallet }) {
       <div className="pv-card">
         <div className="pv-card__header">
           <div>
-            <h3 className="pv-card__title">{selectedHackathon?.name || 'Select an event'}</h3>
+            <h3 className="pv-card__title">
+              Event timeline · {selectedHackathon?.name || 'Select an event'}
+            </h3>
             <p className="pv-card__subtitle">
               {selectedHackathon
-                ? formatDateRange(selectedHackathon.startDate, selectedHackathon.endDate)
-                : ''}
+                ? `${formatDateRange(selectedHackathon.startDate, selectedHackathon.endDate)} · Agenda for judges and participants — not the agent orchestration log on the Dashboard.`
+                : 'Agenda for judges and participants — not the agent orchestration log.'}
             </p>
           </div>
           {myHackathons.length > 1 ? (

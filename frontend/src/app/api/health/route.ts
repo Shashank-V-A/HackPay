@@ -14,6 +14,7 @@ import {
   isSnsConfigured,
   isStrandsEnabled,
 } from '@/lib/aws/env'
+import { isSesConfigured } from '@/lib/aws/ses'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -38,9 +39,11 @@ export async function GET() {
       cloudFrontUrl: getCloudFrontUrl() || null,
       sns: isSnsConfigured(),
       snsTopicArn: isSnsConfigured() ? getSnsTopicArn() : null,
+      ses: isSesConfigured(),
       agentCronSecretConfigured: Boolean(process.env.AGENT_CRON_SECRET?.trim()),
       strands: isStrandsEnabled(),
       bedrockModelId: isStrandsEnabled() ? getBedrockModelId() : null,
+      razorpaySecretArnConfigured: Boolean(process.env.RAZORPAY_SECRET_ARN?.trim()),
     },
   })
 }

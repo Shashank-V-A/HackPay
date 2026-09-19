@@ -1,56 +1,44 @@
-## Backend Overview (Stellar)
+## Backend Overview (AWS + INR)
 
-The Next.js app (`frontend/`, `npm run dev`) holds organizer/sponsor secret keys for **testnet** and invokes the Soroban escrow contract via App Router handlers under `/api/escrow/*`. Classic CLI scripts remain available for the 2-of-2 account flow.
+HackPay’s runtime is the Next.js app in `frontend/` (Amplify Hosting SSR). Escrow and payouts use **Razorpay (INR)**, not Stellar. Persistence is **DynamoDB**. Orchestration is advisory **Strands + Bedrock** plus an EventBridge→Lambda tick. Full deploy notes: **[AWS.md](./AWS.md)**.
 
-### HTTP API (Soroban)
+### Money flow (INR)
 
-| Method | Path | Signer | Contract method |
-|--------|------|--------|-----------------|
-| POST | `/api/escrow/propose` | Organizer | `propose_release` |
-| POST | `/api/escrow/approve` | Sponsor | `approve_release` |
-| POST | `/api/escrow/execute` | Organizer | `execute_release` |
-| GET | `/api/health` | — | Config probe |
+1. Sponsor funds the prize pool via Razorpay Checkout (or mock `order_mock_…` without keys).
+2. Organizer selects winners (optional Strands AI shortlist — advisory only).
+3. Organizer proposes payout → sponsor co-approves (dual control).
+4. Agent tick / execute runs payment + git gates, then posts a RazorpayX payout id or `pout_queued_…` placeholder when RazorpayX is unavailable.
+5. Audit JSON lands in S3 and is linked via CloudFront; SNS can alert subscribers.
 
-Request/response shape:
+### HTTP API (App Router)
 
-```json
-// propose body
-{ "proposal_id": 1710000000000, "payouts": [{ "winner_address": "G...", "amount": "1000000000" }] }
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/api/escrow/propose` | Create payout proposal |
+| POST | `/api/escrow/approve` | Sponsor co-approval |
+| POST | `/api/escrow/execute` | Gated INR release |
+| POST | `/api/agent/tick` | Orchestration tick |
+| POST | `/api/agent/advise` | Strands winner shortlist + timeline |
+| POST | `/api/aws/sns/subscribe` | Email subscribe to agent alerts |
+| POST | `/api/notify/winners` | Optional SES “you won” + SNS |
+| GET | `/api/health` | Config probe |
 
-// approve / execute body
-{ "proposal_id": 1710000000000 }
-
-// response
-{ "success": true, "txHash": "...", "error": "" }
-```
-
-`amount` is **stroops** (1 XLM = 10_000_000). The React `useEscrow()` hook converts XLM → stroops before calling the API.
-
-Shared invoke logic lives in `src/soroban/escrowClient.ts` and `src/api/escrowHandlers.ts` (imported by Next route handlers).
+Shared escrow logic: `frontend/src/lib/backend/escrowHandlers.ts`. Razorpay client: `frontend/src/lib/backend/razorpayClient.ts` (optional Secrets Manager hydrate when Amplify env is empty).
 
 ### Runtime configuration
 
-- `STELLAR_HORIZON_URL`
-- `STELLAR_RPC_URL` (Soroban RPC, default testnet)
-- `STELLAR_NETWORK_PASSPHRASE`
-- `SPONSOR_SECRET_KEY`
-- `ORGANIZER_SECRET_KEY`
-- `SOROBAN_CONTRACT_ID` (optional; falls back to `escrow-state.json` / default id)
-- `PORT` (Next default `3000`)
+See `.env.example` and Amplify env. Important keys:
 
-Copy `.env.example` → `.env` (repo root). Next.js loads it from the parent folder.
+- `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` (or `RAZORPAY_SECRET_ARN`)
+- `DYNAMODB_TABLE_NAME`
+- Cognito `NEXT_PUBLIC_COGNITO_*`
+- `NEXT_PUBLIC_S3_BUCKET` / `NEXT_PUBLIC_CLOUDFRONT_URL`
+- `SNS_TOPIC_ARN`
+- `STRANDS_ENABLED` / `BEDROCK_MODEL_ID`
+- Optional: `SES_FROM_EMAIL` (verified SES identity)
 
-### Script mapping (classic account)
+Copy `.env.example` → `.env` at the repo root. Next loads it from the parent folder.
 
-- `npm run create-escrow` - create and lock escrow signer policy.
-- `npm run deposit -- --amount=<xlm>` - sponsor deposit.
-- `npm run release -- --winner=<G...> --amount=<xlm>` - payout release.
-- `npm run agent` - approval-gated orchestration wrapper.
-- `npm run deploy-contract` - store deployed Soroban contract id.
+### What replaced Stellar
 
-### Production recommendations
-
-- Move private keys to secure signer infrastructure (HSM/KMS).
-- Prefer wallet-signed transactions in the browser instead of server-side private keys.
-- Add idempotent payout records and replay protection.
-- Add timeout/refund path for unresolved approvals.
+Older docs referred to Soroban/XLM and `STELLAR_*` env vars. Those paths are retired. Prize amounts are **INR rupees**; receipts are Razorpay ids or queued placeholders, not Horizon tx hashes.
