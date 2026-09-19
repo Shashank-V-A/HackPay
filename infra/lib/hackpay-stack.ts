@@ -194,6 +194,8 @@ exports.handler = async (event) => {
         { name: 'NEXT_PUBLIC_S3_BUCKET', value: assetsBucket.bucketName },
         { name: 'NEXT_PUBLIC_CLOUDFRONT_URL', value: `https://${distribution.distributionDomainName}` },
         { name: 'NEXT_PUBLIC_SNS_TOPIC_ARN', value: alertsTopic.topicArn },
+        { name: 'STRANDS_ENABLED', value: 'true' },
+        { name: 'BEDROCK_MODEL_ID', value: 'amazon.nova-lite-v1:0' },
       ],
     })
 
@@ -206,7 +208,7 @@ exports.handler = async (event) => {
     })
 
     const appRuntimePolicy = new iam.ManagedPolicy(this, 'HackPayAppRuntimePolicy', {
-      description: 'DynamoDB, S3, SNS, Secrets for HackPay Next.js SSR',
+      description: 'DynamoDB, S3, SNS, Secrets, Bedrock for HackPay Next.js SSR',
       statements: [
         new iam.PolicyStatement({
           actions: [
@@ -233,6 +235,16 @@ exports.handler = async (event) => {
         new iam.PolicyStatement({
           actions: ['secretsmanager:GetSecretValue'],
           resources: [agentCronSecret.secretArn],
+        }),
+        new iam.PolicyStatement({
+          sid: 'BedrockInvokeForStrands',
+          actions: [
+            'bedrock:InvokeModel',
+            'bedrock:InvokeModelWithResponseStream',
+            'bedrock:Converse',
+            'bedrock:ConverseStream',
+          ],
+          resources: ['*'],
         }),
       ],
     })

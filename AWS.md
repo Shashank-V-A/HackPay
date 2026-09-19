@@ -8,6 +8,7 @@ Deploy this stack so HackPay runs on **Amplify + Cognito + DynamoDB + S3/CloudFr
 |---------|---------|
 | **Amazon Cognito** | Email/password auth + `custom:role` (organizer / sponsor / participant) |
 | **Amazon DynamoDB** | Single-table app data (`hackpay-data`) — replaces RDS |
+| **Amazon Bedrock + Strands** | Advisory AI: timeline summaries, smarter notices, repo shortlists |
 | **Amazon S3 + CloudFront** | Receipt / audit JSON objects |
 | **Amazon SNS** | Agent alert fan-out |
 | **EventBridge + Lambda** | Hourly call to `POST /api/agent/tick` |
@@ -78,7 +79,14 @@ npm run dev
 
 Open http://localhost:3000 → `/holder` → Cognito Create account / Sign in.
 
-Check `GET /api/health` — `aws.cognito`, `aws.dynamodb`, `aws.s3`, `aws.sns` should be `true`.
+Check `GET /api/health` — `aws.cognito`, `aws.dynamodb`, `aws.s3`, `aws.sns` should be `true`. With Strands on, `aws.strands` is `true`.
+
+### Enable Bedrock (Strands)
+
+1. In Bedrock console (same region as the app), enable model access for `amazon.nova-lite-v1:0` (or your `BEDROCK_MODEL_ID`).
+2. Set `STRANDS_ENABLED=true` and `BEDROCK_MODEL_ID=...` in Amplify / `.env`.
+3. Attach updated `AppRuntimePolicyArn` (includes `bedrock:InvokeModel`) to the Amplify service role.
+4. Agent tick + `POST /api/agent/advise` will write advisory `payload.agent.suggestions` — organizers still confirm winners; dual-control payouts unchanged.
 
 ## Demo video talking points
 
@@ -86,7 +94,8 @@ Check `GET /api/health` — `aws.cognito`, `aws.dynamodb`, `aws.s3`, `aws.sns` s
 2. Create hackathon; sponsor funds (Razorpay or mock).
 3. Dual-approve payout.
 4. Show **Lambda/EventBridge** tick (or Run tick) writing inbox + **SNS** alert + **S3** receipt URL.
-5. Architecture: Amplify → Cognito → DynamoDB → S3/CloudFront → SNS → EventBridge/Lambda.
+5. Architecture: Amplify → Cognito → DynamoDB → **Strands/Bedrock** (advice) → S3/CloudFront → SNS → EventBridge/Lambda.
+6. Show Strands shortlist on an ended event (`payload.agent.suggestions`) — organizer still confirms winners.
 
 ## Cost notes
 

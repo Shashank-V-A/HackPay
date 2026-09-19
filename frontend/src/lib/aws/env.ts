@@ -72,3 +72,9 @@ export function getDataBackend(): 'dynamodb' | 'none' {
 export function getActiveDataBackend(): 'dynamodb' | 'none' {
   return getDataBackend()
 }
+
+export {
+  isStrandsEnabled,
+  getBedrockModelId,
+  getBedrockRegion,
+} from '@/lib/agent/strands/config'

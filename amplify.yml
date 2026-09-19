@@ -19,6 +19,9 @@ applications:
                 echo "NEXT_PUBLIC_S3_BUCKET=${NEXT_PUBLIC_S3_BUCKET}"
                 echo "NEXT_PUBLIC_CLOUDFRONT_URL=${NEXT_PUBLIC_CLOUDFRONT_URL}"
                 echo "NEXT_PUBLIC_SNS_TOPIC_ARN=${NEXT_PUBLIC_SNS_TOPIC_ARN:-$SNS_TOPIC_ARN}"
+                echo "STRANDS_ENABLED=${STRANDS_ENABLED:-true}"
+                echo "BEDROCK_MODEL_ID=${BEDROCK_MODEL_ID:-amazon.nova-lite-v1:0}"
+                echo "BEDROCK_REGION=${BEDROCK_REGION:-$NEXT_PUBLIC_AWS_REGION}"
               } > .env.production
         build:
           commands:

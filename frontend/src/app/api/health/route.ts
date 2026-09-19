@@ -3,6 +3,7 @@ import { INR_VAULT_ID, isRazorpayLiveConfigured, isRazorpayTestMode } from '@/li
 import {
   getActiveDataBackend,
   getAwsRegion,
+  getBedrockModelId,
   getCloudFrontUrl,
   getDynamoTableName,
   getS3Bucket,
@@ -11,6 +12,7 @@ import {
   isDynamoConfigured,
   isS3Configured,
   isSnsConfigured,
+  isStrandsEnabled,
 } from '@/lib/aws/env'
 
 export const runtime = 'nodejs'
@@ -37,6 +39,8 @@ export async function GET() {
       sns: isSnsConfigured(),
       snsTopicArn: isSnsConfigured() ? getSnsTopicArn() : null,
       agentCronSecretConfigured: Boolean(process.env.AGENT_CRON_SECRET?.trim()),
+      strands: isStrandsEnabled(),
+      bedrockModelId: isStrandsEnabled() ? getBedrockModelId() : null,
     },
   })
 }
