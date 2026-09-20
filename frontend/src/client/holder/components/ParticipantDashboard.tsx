@@ -23,6 +23,7 @@ import {
 } from '../../utils/format'
 import {
   fetchMySubmissions,
+  generateSubmissionAssessment,
   saveRepoSubmission,
   type RepoSubmission,
 } from '../../services/submissionApi'
@@ -224,7 +225,16 @@ export default function ParticipantDashboard({
       {reportSubmission ? (
         <SubmissionAssessmentReport
           submission={reportSubmission}
+          wallet={userWallet || undefined}
           onBack={() => setReportSubmission(null)}
+          onRefresh={async () => {
+            if (!userWallet) return
+            const res = await generateSubmissionAssessment({
+              wallet: userWallet,
+              hackathonId: reportSubmission.hackathonId,
+            })
+            if (res.success && res.submission) setReportSubmission(res.submission)
+          }}
         />
       ) : null}
 

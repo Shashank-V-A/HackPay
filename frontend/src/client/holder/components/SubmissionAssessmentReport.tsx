@@ -1,7 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import Icon from '../../components/Icon'
-import type { RepoSubmission } from '../../services/submissionApi'
+import {
+  downloadSubmissionAssessmentPdf,
+  type RepoSubmission,
+} from '../../services/submissionApi'
 
 function ScoreRing({ value, label }: { value: number; label: string }) {
   const clamped = Math.max(0, Math.min(100, value))
@@ -23,21 +27,49 @@ function ScoreRing({ value, label }: { value: number; label: string }) {
 
 interface SubmissionAssessmentReportProps {
   submission: RepoSubmission
+  wallet?: string
   onBack?: () => void
   onRefresh?: () => void
   refreshing?: boolean
 }
 
+function triggerPdfDownload(opts: { pdfUrl?: string; pdfBase64?: string; pdfName?: string }) {
+  const name = `${opts.pdfName || 'HackPay-Assessment'}.pdf`
+  if (opts.pdfUrl) {
+    window.open(opts.pdfUrl, '_blank', 'noopener,noreferrer')
+    return
+  }
+  if (opts.pdfBase64) {
+    const raw = opts.pdfBase64.includes(',')
+      ? opts.pdfBase64.split(',')[1]
+      : opts.pdfBase64
+    const binary = atob(raw)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    const blob = new Blob([bytes], { type: 'application/pdf' })
+    const href = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = href
+    a.download = name
+    a.click()
+    URL.revokeObjectURL(href)
+  }
+}
+
 /**
  * Accio Matrix–inspired overall assessment report for a GitHub submission.
- * @see https://web.acciomatrix.com/assessment-user-report/...
+ * PDF export uses DronaHQ PDF Creator (Automation webhook).
+ * @see https://docs.dronahq.com/pdf-creator-overview/
  */
 export default function SubmissionAssessmentReport({
   submission,
+  wallet,
   onBack,
   onRefresh,
   refreshing,
 }: SubmissionAssessmentReportProps) {
+  const [pdfBusy, setPdfBusy] = useState(false)
+  const [pdfError, setPdfError] = useState<string | null>(null)
   const a = submission.assessment
   if (!a) {
     return (
@@ -66,18 +98,62 @@ export default function SubmissionAssessmentReport({
         ) : (
           <span />
         )}
-        {onRefresh ? (
+        <div className="pv-assess__toolbar-actions" style={{ display: 'flex', gap: '0.5rem' }}>
           <button
             type="button"
             className="pv-btn pv-btn--secondary pv-btn--sm"
-            onClick={onRefresh}
-            disabled={refreshing}
+            disabled={pdfBusy || typeof wallet !== 'string' || !wallet.trim()}
+            title={
+              typeof wallet !== 'string' || !wallet.trim()
+                ? 'Sign in required for PDF export'
+                : 'Export via DronaHQ PDF Creator'
+            }
+            onClick={async (e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              const walletAddr = typeof wallet === 'string' ? wallet.trim() : ''
+              if (!walletAddr) {
+                setPdfError('Sign in required for PDF export')
+                return
+              }
+              setPdfError(null)
+              setPdfBusy(true)
+              try {
+                const res = await downloadSubmissionAssessmentPdf({
+                  wallet: walletAddr,
+                  hackathonId: String(submission.hackathonId || ''),
+                })
+                if (!res.success) {
+                  setPdfError(res.error || 'PDF export failed')
+                  return
+                }
+                triggerPdfDownload(res)
+              } finally {
+                setPdfBusy(false)
+              }
+            }}
           >
-            {refreshing ? <span className="pv-btn__spinner" /> : <Icon name="refresh" size={14} />}
-            Refresh report
+            {pdfBusy ? <span className="pv-btn__spinner" /> : <Icon name="download" size={14} />}
+            Download PDF
           </button>
-        ) : null}
+          {onRefresh ? (
+            <button
+              type="button"
+              className="pv-btn pv-btn--secondary pv-btn--sm"
+              onClick={onRefresh}
+              disabled={refreshing}
+            >
+              {refreshing ? <span className="pv-btn__spinner" /> : <Icon name="refresh" size={14} />}
+              Refresh report
+            </button>
+          ) : null}
+        </div>
       </div>
+      {pdfError ? (
+        <p className="pv-assess__footnote" role="alert" style={{ color: 'var(--pv-danger, #b91c1c)' }}>
+          {pdfError}
+        </p>
+      ) : null}
 
       <header className="pv-assess__hero">
         <p className="pv-assess__eyebrow">Overall Report</p>

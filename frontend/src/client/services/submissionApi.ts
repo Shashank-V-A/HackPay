@@ -90,3 +90,44 @@ export async function generateSubmissionAssessment(input: {
     }
   }
 }
+
+/** Generate professional PDF via DronaHQ PDF Creator Automation webhook. */
+export async function downloadSubmissionAssessmentPdf(input: {
+  wallet: string
+  hackathonId: string
+}): Promise<{
+  success: boolean
+  pdfUrl?: string
+  pdfBase64?: string
+  pdfName?: string
+  error?: string
+}> {
+  try {
+    const res = await fetch('/api/participants/submissions/pdf', {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(input),
+    })
+    const data = (await res.json()) as {
+      success?: boolean
+      pdfUrl?: string
+      pdfBase64?: string
+      pdfName?: string
+      error?: string
+    }
+    if (!res.ok || !data.success) {
+      return { success: false, error: data.error || `PDF failed (${res.status})` }
+    }
+    return {
+      success: true,
+      pdfUrl: data.pdfUrl,
+      pdfBase64: data.pdfBase64,
+      pdfName: data.pdfName,
+    }
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'PDF failed',
+    }
+  }
+}

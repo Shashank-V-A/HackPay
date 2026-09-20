@@ -751,6 +751,8 @@
   position: relative;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  text-align: center;
   gap: var(--pv-space-4);
   padding: var(--pv-space-5) var(--pv-space-5);
   margin-bottom: -1px;

@@ -136,6 +136,7 @@ Check `GET /api/health` → `razorpayConfigured: true`.
 4. Agent POSTs assessment to **`POST /api/participants/submissions/assessment`** with `x-hackpay-agent-secret`.
 5. Optional **`NASIKO_OBSERVE_WEBHOOK_URL`** for Nasiko traces.
 6. UI shows **View report** when `assessment` is present.
+7. **Download PDF** → DronaHQ PDF Creator via **`DRONAHQ_PDF_GENERATE_URL`** (Automation webhook running GetPDFURL on a published template). See [PDF Creator overview](https://docs.dronahq.com/pdf-creator-overview/).
 
 See `agents/git-eval/README.md` and `.env.example`.
 
