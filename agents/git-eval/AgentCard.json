@@ -1,0 +1,32 @@
+{
+  "name": "hackpay-git-eval",
+  "description": "HackPay Git submission evaluator. Uses Anakin to surf public GitHub repo URLs, scores idea fit / completeness / activity / docs, returns Accio-style assessment JSON and can callback HackPay.",
+  "url": "http://localhost:8000/",
+  "version": "1.0.0",
+  "protocolVersion": "0.2.9",
+  "preferredTransport": "JSONRPC",
+  "transport": "http",
+  "framework": "nodejs",
+  "agentFramework": "nodejs",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false,
+    "chat_agent": true
+  },
+  "defaultInputModes": ["text/plain", "application/json"],
+  "defaultOutputModes": ["application/json", "text/plain"],
+  "skills": [
+    {
+      "id": "evaluate-github-submission",
+      "name": "Evaluate GitHub submission",
+      "description": "Given idea + githubUrl (JSON), surf the repo with Anakin and return assessment scores and feedback.",
+      "tags": ["github", "hackathon", "anakin", "evaluation", "hackpay"],
+      "examples": [
+        "{\"idea\":\"dual-approval prize escrow\",\"githubUrl\":\"https://github.com/owner/repo\",\"hackathonId\":\"…\",\"walletAddress\":\"…\",\"callbackUrl\":\"…\"}",
+        "Evaluate https://github.com/owner/repo for a blockchain escrow hackathon idea"
+      ]
+    }
+  ],
+  "tags": ["hackpay", "github", "anakin", "nasiko", "evaluation"]
+}

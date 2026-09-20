@@ -128,6 +128,17 @@ Check `GET /api/health` → `razorpayConfigured: true`.
 3. Attach updated `AppRuntimePolicyArn` (includes `bedrock:InvokeModel`) to the Amplify service role.
 4. Agent tick + `POST /api/agent/advise` will write advisory `payload.agent.suggestions` — organizers still confirm winners; dual-control payouts unchanged.
 
+### Submission assessment (Nasiko + Anakin; not DronaHQ)
+
+1. Participant saves idea + public GitHub URL → DynamoDB (+ optional Supabase mirror).
+2. HackPay POSTs to **`NASIKO_GIT_EVAL_URL`** (`agents/git-eval` — local or Nasiko-deployed).
+3. Agent uses **Anakin** (`ANAKIN_API_KEY`) to **surf** the GitHub repo URL → markdown, then scores.
+4. Agent POSTs assessment to **`POST /api/participants/submissions/assessment`** with `x-hackpay-agent-secret`.
+5. Optional **`NASIKO_OBSERVE_WEBHOOK_URL`** for Nasiko traces.
+6. UI shows **View report** when `assessment` is present.
+
+See `agents/git-eval/README.md` and `.env.example`.
+
 ## Demo video talking points
 
 1. Sign up with **Cognito** (role = organizer).
