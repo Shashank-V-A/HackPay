@@ -11,6 +11,10 @@ export interface Participant {
   name: string
   team?: string
   project?: string
+  /** Public GitHub repo URL or owner/repo slug for the event submission. */
+  githubUrl?: string
+  /** Short pitch / problem statement the repo should solve. */
+  idea?: string
   track?: string
   registeredAt: string
   status: 'registered' | 'shortlisted' | 'winner'

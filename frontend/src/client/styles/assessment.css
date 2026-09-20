@@ -1,0 +1,208 @@
+/* Accio-inspired submission assessment report */
+.pv-assess {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pv-space-6);
+}
+
+.pv-assess__toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--pv-space-3);
+}
+
+.pv-assess__hero {
+  padding: var(--pv-space-6);
+  border-radius: var(--pv-radius-lg, 16px);
+  background: linear-gradient(135deg, #0f766e 0%, #115e59 45%, #134e4a 100%);
+  color: #ecfdf5;
+}
+
+.pv-assess__eyebrow {
+  margin: 0 0 var(--pv-space-2);
+  font-size: var(--pv-text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.pv-assess__title {
+  margin: 0 0 var(--pv-space-5);
+  font-size: clamp(1.35rem, 2vw, 1.75rem);
+  font-weight: 700;
+}
+
+.pv-assess__meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--pv-space-4);
+  margin: 0;
+}
+
+.pv-assess__meta dt {
+  font-size: var(--pv-text-xs);
+  opacity: 0.75;
+  margin-bottom: 0.2rem;
+}
+
+.pv-assess__meta dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.pv-assess__meta a {
+  color: #a7f3d0;
+  word-break: break-all;
+}
+
+.pv-assess__idea,
+.pv-assess__signals,
+.pv-assess__feedback,
+.pv-assess__split section {
+  padding: var(--pv-space-5);
+  border: 1px solid var(--pv-border, #e5e7eb);
+  border-radius: var(--pv-radius-lg, 12px);
+  background: var(--pv-surface, #fff);
+}
+
+.pv-assess__idea h3,
+.pv-assess__signals h3,
+.pv-assess__feedback h3,
+.pv-assess__split h3 {
+  margin: 0 0 var(--pv-space-3);
+  font-size: var(--pv-text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--pv-muted, #6b7280);
+}
+
+.pv-assess__idea p,
+.pv-assess__feedback p {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.pv-assess__scores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: var(--pv-space-4);
+}
+
+.pv-assess__score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--pv-space-2);
+  padding: var(--pv-space-4);
+  border: 1px solid var(--pv-border, #e5e7eb);
+  border-radius: var(--pv-radius-lg, 12px);
+  background: var(--pv-surface, #fff);
+}
+
+.pv-assess__ring {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+
+.pv-assess__ring-inner {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--pv-surface, #fff);
+  font-weight: 700;
+  font-size: var(--pv-text-sm);
+}
+
+.pv-assess__score-label {
+  font-size: var(--pv-text-xs);
+  color: var(--pv-muted, #6b7280);
+  text-align: center;
+}
+
+.pv-assess__signal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--pv-space-3);
+}
+
+.pv-assess__signal {
+  padding: var(--pv-space-3);
+  border-radius: 10px;
+  background: var(--pv-bg-soft, #f8fafc);
+}
+
+.pv-assess__signal-label {
+  display: block;
+  font-size: var(--pv-text-xs);
+  color: var(--pv-muted, #6b7280);
+  margin-bottom: 0.25rem;
+}
+
+.pv-assess__signal-value {
+  font-weight: 700;
+}
+
+.pv-assess__split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--pv-space-4);
+}
+
+.pv-assess__chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pv-space-2);
+}
+
+.pv-assess__chips li {
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  font-size: var(--pv-text-sm);
+}
+
+.pv-assess__chips--ok li {
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.pv-assess__chips--warn li {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.pv-assess__feedback--ai {
+  border-color: #99f6e4;
+  background: #f0fdfa;
+}
+
+.pv-assess__footnote {
+  margin: 0;
+  font-size: var(--pv-text-xs);
+  color: var(--pv-muted, #6b7280);
+}
+
+.pv-submit-form {
+  display: grid;
+  gap: var(--pv-space-4);
+}
+
+.pv-submit-form__row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--pv-space-4);
+}
+
+@media (min-width: 720px) {
+  .pv-submit-form__row {
+    grid-template-columns: 1.2fr 1fr;
+  }
+}

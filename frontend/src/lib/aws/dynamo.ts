@@ -41,6 +41,8 @@ const UNIQUE_ATTR: Record<string, string> = {
   escrows: 'hackathon_id',
   payouts: 'id',
   hackathon_registrations: 'id',
+  /** Composite: hackathon_id#wallet — see resolveId */
+  repo_submissions: 'id',
 }
 
 let doc: DynamoDBDocumentClient | null = null
@@ -84,6 +86,9 @@ function gsi2(table: string, attr: string, value: unknown): { gsi2pk: string; gs
 function resolveId(table: string, row: Row, conflictCols: string[]): string {
   if (table === 'hackathon_registrations' && row.hackathon_id && row.wallet_address) {
     return `${row.hackathon_id}#${row.wallet_address}`
+  }
+  if (table === 'repo_submissions' && row.hackathon_id && row.wallet_address) {
+    return `${row.hackathon_id}#${String(row.wallet_address).toLowerCase()}`
   }
   if (table === 'payouts' && row.proposal_id && row.winner_wallet) {
     return `${row.proposal_id}#${row.winner_wallet}`

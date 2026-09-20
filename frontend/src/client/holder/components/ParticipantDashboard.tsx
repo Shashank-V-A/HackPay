@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
 import Icon from '../../components/Icon'
 import EventVerifiedBadge from '../../components/EventVerifiedBadge'
 import { Hackathon } from '../../types/hackathon'
@@ -21,6 +21,12 @@ import {
   prizeCurrency,
   prizeTotal,
 } from '../../utils/format'
+import {
+  fetchMySubmissions,
+  saveRepoSubmission,
+  type RepoSubmission,
+} from '../../services/submissionApi'
+import SubmissionAssessmentReport from './SubmissionAssessmentReport'
 
 interface ParticipantDashboardProps {
   userWallet: string | null
@@ -38,6 +44,28 @@ export default function ParticipantDashboard({
   const [claimingId, setClaimingId] = useState<string | null>(null)
   const [destinations, setDestinations] = useState<Record<string, string>>({})
   const [notice, setNotice] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null)
+  const [submissions, setSubmissions] = useState<RepoSubmission[]>([])
+  const [submitHackathonId, setSubmitHackathonId] = useState<string>('')
+  const [idea, setIdea] = useState('')
+  const [githubUrl, setGithubUrl] = useState('')
+  const [savingSubmission, setSavingSubmission] = useState(false)
+  const [reportSubmission, setReportSubmission] = useState<RepoSubmission | null>(null)
+
+  const loadSubmissions = useCallback(async () => {
+    if (!userWallet) return
+    const result = await fetchMySubmissions(userWallet)
+    if (result.success) setSubmissions(result.submissions || [])
+  }, [userWallet])
+
+  useEffect(() => {
+    void loadSubmissions()
+  }, [loadSubmissions])
+
+  const submissionByHackathon = useMemo(() => {
+    const map = new Map<string, RepoSubmission>()
+    for (const s of submissions) map.set(s.hackathonId, s)
+    return map
+  }, [submissions])
 
   const mine = useMemo(
     () => hackathons.filter((h) => isRegistered(h, userWallet)),
@@ -123,6 +151,40 @@ export default function ParticipantDashboard({
     setClaimingId(null)
   }
 
+  const openSubmitForm = (hackathon: Hackathon) => {
+    const existing = submissionByHackathon.get(hackathon.id)
+    setSubmitHackathonId(hackathon.id)
+    setIdea(existing?.idea || '')
+    setGithubUrl(existing?.githubUrl || '')
+    setReportSubmission(null)
+  }
+
+  const handleSaveSubmission = async () => {
+    if (!userWallet || !submitHackathonId) return
+    setSavingSubmission(true)
+    setNotice(null)
+    const result = await saveRepoSubmission({
+      wallet: userWallet,
+      hackathonId: submitHackathonId,
+      idea,
+      githubUrl,
+    })
+    setSavingSubmission(false)
+    if (!result.success || !result.submission) {
+      setNotice({ tone: 'danger', text: result.error || 'Could not save submission.' })
+      return
+    }
+    setSubmissions((prev) => {
+      const rest = prev.filter((s) => s.hackathonId !== result.submission!.hackathonId)
+      return [result.submission!, ...rest]
+    })
+    setNotice({
+      tone: 'success',
+      text: 'Submission saved. Nasiko git-eval (Anakin surfs the repo) will produce the assessment when configured.',
+    })
+    reload()
+  }
+
   if (!userWallet) {
     return (
       <div className="pv-alert pv-alert--warning">
@@ -159,6 +221,15 @@ export default function ParticipantDashboard({
         </div>
       ) : null}
 
+      {reportSubmission ? (
+        <SubmissionAssessmentReport
+          submission={reportSubmission}
+          onBack={() => setReportSubmission(null)}
+        />
+      ) : null}
+
+      {!reportSubmission ? (
+      <>
       <div className="pv-stats">
         <div className="pv-stat">
           <span className="pv-stat__label">
@@ -286,6 +357,158 @@ export default function ParticipantDashboard({
         </section>
       ) : null}
 
+      {mine.length > 0 ? (
+        <section className="pv-card">
+          <div className="pv-card__header">
+            <div>
+              <h3 className="pv-card__title">Submit GitHub project</h3>
+              <p className="pv-card__subtitle">
+                Attach your public repo and idea. Saved to DynamoDB (and Supabase if configured).
+                The Nasiko git-eval agent uses Anakin to surf the GitHub link and write the report.
+              </p>
+            </div>
+          </div>
+          <div className="pv-card__body">
+            <form
+              className="pv-submit-form"
+              onSubmit={(e) => {
+                e.preventDefault()
+                void handleSaveSubmission()
+              }}
+            >
+              <div className="pv-field">
+                <label className="pv-field__label" htmlFor="submit-hackathon">
+                  Hackathon
+                </label>
+                <select
+                  id="submit-hackathon"
+                  className="pv-input"
+                  value={submitHackathonId}
+                  onChange={(e) => {
+                    const id = e.target.value
+                    const h = mine.find((x) => x.id === id)
+                    if (h) openSubmitForm(h)
+                    else setSubmitHackathonId(id)
+                  }}
+                  required
+                >
+                  <option value="">Select a registered event</option>
+                  {mine.map((h) => (
+                    <option key={h.id} value={h.id}>
+                      {h.name}
+                      {submissionByHackathon.has(h.id) ? ' · submitted' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="pv-submit-form__row">
+                <div className="pv-field">
+                  <label className="pv-field__label" htmlFor="submit-idea">
+                    Idea / problem statement
+                  </label>
+                  <textarea
+                    id="submit-idea"
+                    className="pv-input"
+                    rows={4}
+                    placeholder="What are you building and why?"
+                    value={idea}
+                    onChange={(e) => setIdea(e.target.value)}
+                    required
+                    disabled={!submitHackathonId || savingSubmission}
+                  />
+                </div>
+                <div className="pv-field">
+                  <label className="pv-field__label" htmlFor="submit-github">
+                    Public GitHub repo
+                  </label>
+                  <input
+                    id="submit-github"
+                    className="pv-input"
+                    placeholder="https://github.com/owner/repo"
+                    value={githubUrl}
+                    onChange={(e) => setGithubUrl(e.target.value)}
+                    required
+                    disabled={!submitHackathonId || savingSubmission}
+                  />
+                  <p className="pv-muted" style={{ fontSize: 'var(--pv-text-xs)', marginTop: 8 }}>
+                    Must be public so the evaluator can read metadata and README.
+                  </p>
+                </div>
+              </div>
+              <div className="pv-btn-group">
+                <button
+                  type="submit"
+                  className="pv-btn pv-btn--primary"
+                  disabled={!submitHackathonId || savingSubmission}
+                >
+                  {savingSubmission ? (
+                    <>
+                      <span className="pv-btn__spinner" />
+                      Saving…
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="checkCircle" size={15} />
+                      Save submission
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+
+            {submissions.length > 0 ? (
+              <div className="pv-stack" style={{ marginTop: 'var(--pv-space-6)' }}>
+                <h4 className="pv-card__subtitle" style={{ margin: 0 }}>
+                  Your submissions
+                </h4>
+                {submissions.map((s) => (
+                  <div key={s.id} className="pv-dl">
+                    <div className="pv-dl__item">
+                      <dt className="pv-dl__key">{s.hackathonName || s.hackathonId}</dt>
+                      <dd className="pv-dl__val">
+                        <a href={s.githubUrl} target="_blank" rel="noopener noreferrer">
+                          {s.githubUrl.replace(/^https?:\/\//, '')}
+                        </a>
+                        {s.assessment ? (
+                          <span className="pv-badge pv-badge--success" style={{ marginLeft: 8 }}>
+                            {s.assessment.scores.overall}% overall
+                          </span>
+                        ) : (
+                          <span className="pv-badge" style={{ marginLeft: 8 }}>
+                            pending report
+                          </span>
+                        )}
+                      </dd>
+                    </div>
+                    <div className="pv-btn-group">
+                      {s.assessment ? (
+                        <button
+                          type="button"
+                          className="pv-btn pv-btn--secondary pv-btn--xs"
+                          onClick={() => setReportSubmission(s)}
+                        >
+                          View report
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="pv-btn pv-btn--ghost pv-btn--xs"
+                        onClick={() => {
+                          const h = mine.find((x) => x.id === s.hackathonId)
+                          if (h) openSubmitForm(h)
+                        }}
+                      >
+                        Edit
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
       <section className="pv-card">
         <div className="pv-card__header">
           <div>
@@ -367,13 +590,33 @@ export default function ParticipantDashboard({
                           )}
                         </td>
                         <td className="pv-table__actions" data-label="Actions">
-                          <button
-                            type="button"
-                            className="pv-btn pv-btn--secondary pv-btn--xs"
-                            onClick={() => onNavigate?.('event', { hackathonId: h.id })}
-                          >
-                            View details
-                          </button>
+                          <div className="pv-btn-group">
+                            <button
+                              type="button"
+                              className="pv-btn pv-btn--secondary pv-btn--xs"
+                              onClick={() => openSubmitForm(h)}
+                            >
+                              {submissionByHackathon.has(h.id) ? 'Edit repo' : 'Submit repo'}
+                            </button>
+                            {submissionByHackathon.get(h.id)?.assessment ? (
+                              <button
+                                type="button"
+                                className="pv-btn pv-btn--ghost pv-btn--xs"
+                                onClick={() =>
+                                  setReportSubmission(submissionByHackathon.get(h.id) || null)
+                                }
+                              >
+                                Report
+                              </button>
+                            ) : null}
+                            <button
+                              type="button"
+                              className="pv-btn pv-btn--ghost pv-btn--xs"
+                              onClick={() => onNavigate?.('event', { hackathonId: h.id })}
+                            >
+                              Details
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     )
@@ -471,6 +714,8 @@ export default function ParticipantDashboard({
           </div>
         )}
       </section>
+      </>
+      ) : null}
     </div>
   )
 }
