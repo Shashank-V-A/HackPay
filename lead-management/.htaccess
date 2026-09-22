@@ -1,0 +1,4 @@
+# Block the env file if this directory is the Apache document root.
+<Files ".env">
+    Require all denied
+</Files>

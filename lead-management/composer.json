@@ -1,0 +1,11 @@
+{
+    "name": "acme/lead-management",
+    "description": "Small lead-generation contact form (PHP and MySQL).",
+    "require": {
+        "php": ">=8.0",
+        "phpmailer/phpmailer": "^6.9"
+    },
+    "config": {
+        "sort-packages": true
+    }
+}

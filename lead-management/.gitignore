@@ -1,0 +1,8 @@
+# Local secrets. Copy .env.example to .env and fill it in.
+.env
+.env.local
+*.local.php
+
+# Install with `composer install` (or upload this folder on a host
+# that cannot run Composer). composer.lock stays in git.
+/vendor/
